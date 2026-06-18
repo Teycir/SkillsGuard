@@ -113,6 +113,7 @@ flowchart TD
 - [Features](#features)
 - [Threat Coverage](#threat-coverage)
 - [Quick Start](#quick-start)
+- [Local Workflow](#local-workflow)
 - [CLI Usage](#cli-usage)
 - [Git Diff Mode](#git-diff-mode)
 - [Configuration File](#configuration-file)
@@ -170,6 +171,7 @@ Zero runtime dependencies. Runs anywhere Node ≥ 18.3 is available.
 - **Pre-commit hook** — `skillsguard install-hook` blocks malicious commits at the source
 - **MCP stdio server** — one tool (`scan_skill`) plugs directly into Claude Desktop or Claude Code
 - **Auto-setup** — `skillsguard setup` registers the MCP server in all detected config locations
+- **Agent skill** — `skill/SKILL.md` teaches any Claude-based agent to invoke `scan_skill`, interpret results, and deliver a structured audit report with a INSTALL / DO NOT INSTALL verdict
 - **Library API** — import `scan()` directly in your own tooling
 - **Zero runtime dependencies** — devDependencies only (TypeScript + `@types/node`)
 - **Deduplication** — each finding reported once regardless of how many blobs contain it
@@ -245,6 +247,109 @@ This writes the `skillsguard` MCP entry into:
 - `~/.config/claude/mcp_config.json` (Claude Code / CLI)
 - `~/Library/Application Support/Claude/claude_desktop_config.json` (Claude Desktop, macOS)
 - `%APPDATA%\Claude\claude_desktop_config.json` (Claude Desktop, Windows)
+
+---
+
+## Local Workflow
+
+There are two ways to use SkillsGuard locally. Choose the one that matches your setup.
+
+---
+
+### Path A — Install the CLI and scan from the terminal
+
+The simplest path. One install, then call `skillsguard` like any other command.
+
+```bash
+# 1. Install globally
+npm install -g skillsguard
+
+# 2. Scan a skill directory
+skillsguard /path/to/skill
+
+# 3. Or scan a single SKILL.md
+skillsguard ./SKILL.md
+
+# 4. CI-friendly: JSON output, fail on HIGH+
+skillsguard /path/to/skill --json --min-severity HIGH
+```
+
+Exit code tells you the result: `0` = clean · `1` = findings · `2` = usage error.  
+Add `--stats` for a quick category/severity breakdown without the full findings list.
+
+---
+
+### Path B — Install the skill, register the MCP server, let Claude audit automatically
+
+This path gives you Claude-native integration: drop a skill in your agent's skill directory and Claude will call `scan_skill` automatically before reading or acting on any skill content.
+
+**Step 1 — Install the CLI** (needed for the MCP server binary)
+
+```bash
+npm install -g skillsguard
+```
+
+**Step 2 — Install the SkillsGuard skill** into your agent's skill directory
+
+```bash
+# Clone or copy skill/SKILL.md from this repo into your skills folder
+# Example for oh-my-opencode / opencode agents:
+cp /path/to/SkillsGuard/skill/SKILL.md ~/.agents/skills/skillsguard/SKILL.md
+
+# Example for Claude Code / Kiro:
+cp /path/to/SkillsGuard/skill/SKILL.md ~/.kiro/skills/skillsguard/SKILL.md
+```
+
+The skill teaches Claude how to invoke the scanner, interpret findings, and produce a structured audit report with a clear INSTALL / INSTALL WITH CAUTION / DO NOT INSTALL verdict.
+
+**Step 3 — Register the MCP server**
+
+```bash
+skillsguard setup
+```
+
+This writes the `skillsguard` MCP entry into all detected config locations:
+- `~/.config/claude/mcp_config.json` (Claude Code / CLI)
+- `~/Library/Application Support/Claude/claude_desktop_config.json` (Claude Desktop, macOS)
+- `%APPDATA%\Claude\claude_desktop_config.json` (Claude Desktop, Windows)
+
+Or add it manually if auto-setup doesn't apply to your agent:
+
+```json
+{
+  "mcpServers": {
+    "skillsguard": {
+      "command": "node",
+      "args": ["/absolute/path/to/dist/cli.js", "--mcp"],
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+**Step 4 — Restart your agent and ask it to audit a skill**
+
+```
+Scan ~/.agents/skills/some-new-skill for security issues
+```
+
+Claude picks up the skill, calls `scan_skill`, and responds with a structured audit report. No manual command needed.
+
+---
+
+### Which path should I use?
+
+| | Path A (CLI) | Path B (Skill + MCP) |
+|---|---|---|
+| Setup complexity | One install | Install + skill file + MCP config |
+| Works without an agent | ✅ | ❌ |
+| Claude audits skills automatically | ❌ | ✅ |
+| CI / scripting | ✅ Best fit | Possible via `--json` flag |
+| Pre-commit hook | ✅ `skillsguard install-hook` | ✅ Same hook, different invocation |
+
+Use **Path A** if you want a standalone scanner you run from the terminal or CI.  
+Use **Path B** if you want SkillsGuard wired into your Claude-based agent workflow so auditing happens before any skill content is read.
 
 ---
 
@@ -1182,6 +1287,8 @@ SkillsGuard/
 │   ├── supply-chain-skill/
 │   ├── typosquatting-leak-skill/
 │   └── workspace-actions-skill/
+├── skill/
+│   └── SKILL.md               # Agent skill: teaches Claude to invoke scan_skill and audit
 ├── demo/
 │   └── run-demo.sh                # Sends real testskills/ fixtures to the live Cloud API
 ├── dist/               # Compiled output (gitignored)
