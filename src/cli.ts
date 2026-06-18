@@ -33,6 +33,7 @@ SkillsGuard — static security scanner for AI agent skills
 
 Usage:
   skillsguard <target> [options]
+  skillsguard server [port]
 
 Arguments:
   <target>          Path to a directory or single file to scan
@@ -43,13 +44,15 @@ Options:
   --min-severity    Filter findings below this level (default: INFO)
                     Values: CRITICAL HIGH MEDIUM LOW INFO
   --exit-zero       Exit 0 even when findings exist (CI report mode)
+  --server          Start local HTTP server to scan files via curl POST
+  --port <number>   Port to listen on for HTTP server (default: 3000)
   --help            Show this help and exit
 
 Examples:
   skillsguard /path/to/skills
   skillsguard ./SKILL.md --json
-  skillsguard /skills --min-severity HIGH
-  skillsguard /skills --json --exit-zero | jq '.findings[].severity'
+  skillsguard server 4000
+  curl --data-binary @SKILL.md http://localhost:3000/scan
 `.trim());
 }
 
@@ -104,6 +107,23 @@ async function main(): Promise<void> {
   if (args.includes("setup") || args.includes("--setup")) {
     const dryRun = args.includes("--dry-run");
     setupMcp(dryRun);
+    return;
+  }
+  if (args.includes("--server") || args.includes("server")) {
+    const portIdx = args.indexOf("--port");
+    let port = 3000;
+    if (portIdx !== -1) {
+      const val = parseInt(args[portIdx + 1] ?? "3000", 10);
+      if (!isNaN(val)) port = val;
+    } else {
+      const serverIdx = args.indexOf("server");
+      if (serverIdx !== -1 && args[serverIdx + 1] !== undefined) {
+        const val = parseInt(args[serverIdx + 1]!, 10);
+        if (!isNaN(val)) port = val;
+      }
+    }
+    const { startServer } = await import("./server.js");
+    startServer(port);
     return;
   }
 

@@ -89,7 +89,7 @@ async function collectFiles(target: string): Promise<readonly string[]> {
 
 // ─── Scanning logic ─────────────────────────────────────────────────────────
 
-function scanText(
+export function scanText(
   text: string,
   filePath: string,
   decodedFrom?: string,
