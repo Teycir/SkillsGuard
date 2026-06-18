@@ -54,7 +54,8 @@ export function setupMcp(dryRun = false): void {
           const raw = readFileSync(configPath, "utf-8");
           try {
             configData = JSON.parse(raw) as McpConfig;
-          } catch {
+          } catch (err: unknown) {
+            console.error(`Warning: Config file ${configPath} contains invalid JSON. Resetting to empty schema. Error: ${String(err)}`);
             configData = {};
           }
         }

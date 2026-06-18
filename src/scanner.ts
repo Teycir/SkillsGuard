@@ -85,11 +85,12 @@ function resolveRules(options?: ScanOptions): readonly Rule[] {
 
 // ─── File discovery ──────────────────────────────────────────────────────────
 
-async function collectFiles(target: string): Promise<readonly string[]> {
+async function collectFiles(target: string, rootDir: string): Promise<{ readonly files: readonly string[]; readonly errors: readonly Finding[] }> {
   const s = await stat(target);
-  if (s.isFile()) return [target];
+  if (s.isFile()) return { files: [target], errors: [] };
 
-  const results: string[] = [];
+  const files: string[] = [];
+  const errors: Finding[] = [];
   const queue: string[] = [target];
   const visited = new Set<string>();
 
@@ -98,7 +99,20 @@ async function collectFiles(target: string): Promise<readonly string[]> {
     let realDir: string;
     try {
       realDir = await realpath(dir);
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+        continue;
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push({
+        ruleId: "SG-READ-ERR",
+        category: "scanner",
+        severity: "HIGH",
+        message: `Failed to resolve directory path: ${msg}`,
+        file: relative(rootDir, dir) || ".",
+        line: 1,
+        evidence: "Path resolution error",
+      });
       continue;
     }
     if (visited.has(realDir)) continue;
@@ -107,7 +121,20 @@ async function collectFiles(target: string): Promise<readonly string[]> {
     let entries: { name: string; isDirectory(): boolean; isFile(): boolean; isSymbolicLink(): boolean }[];
     try {
       entries = await readdir(dir, { withFileTypes: true });
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+        continue;
+      }
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push({
+        ruleId: "SG-READ-ERR",
+        category: "scanner",
+        severity: "HIGH",
+        message: `Failed to read directory entries: ${msg}`,
+        file: relative(rootDir, dir) || ".",
+        line: 1,
+        evidence: "Directory read error",
+      });
       continue;
     }
     for (const entry of entries) {
@@ -118,7 +145,20 @@ async function collectFiles(target: string): Promise<readonly string[]> {
         try {
           const symStat = await stat(full);
           isDir = symStat.isDirectory();
-        } catch {
+        } catch (err: unknown) {
+          if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+            continue;
+          }
+          const msg = err instanceof Error ? err.message : String(err);
+          errors.push({
+            ruleId: "SG-READ-ERR",
+            category: "scanner",
+            severity: "HIGH",
+            message: `Failed to stat symbolic link target: ${msg}`,
+            file: relative(rootDir, full),
+            line: 1,
+            evidence: "Symbolic link stat error",
+          });
           continue;
         }
       }
@@ -138,13 +178,13 @@ async function collectFiles(target: string): Promise<readonly string[]> {
           nameNoExt === "gemfile" ||
           ALLOWED_EXTENSIONS.has(ext)
         ) {
-          results.push(full);
+          files.push(full);
         }
       }
     }
   }
 
-  return results;
+  return { files, errors };
 }
 
 // ─── Scanning logic ─────────────────────────────────────────────────────────
@@ -210,8 +250,20 @@ async function scanFile(filePath: string, rootDir: string, options?: ScanOptions
       }];
     }
     content = await readFile(filePath, "utf-8");
-  } catch {
-    return [];
+  } catch (err: unknown) {
+    if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+      return [];
+    }
+    const errMsg = err instanceof Error ? err.message : String(err);
+    return [{
+      ruleId: "SG-READ-ERR",
+      category: "scanner",
+      severity: "HIGH",
+      message: `Failed to read file: ${errMsg}`,
+      file: relPath,
+      line: 1,
+      evidence: `Read error`,
+    }];
   }
 
   const findings: Finding[] = [];
@@ -287,10 +339,10 @@ export async function scan(target: string, options?: ScanOptions): Promise<ScanR
     throw new Error(`Cannot access target '${target}': ${msg}`);
   }
 
-  const files = await collectFiles(target);
+  const { files, errors } = await collectFiles(target, rootDir);
   const scanResults = await runConcurrent(files, 16, (file) => scanFile(file, rootDir, options));
   
-  const allFindings: Finding[] = [];
+  const allFindings: Finding[] = [...errors];
   for (const findings of scanResults) {
     allFindings.push(...findings);
   }

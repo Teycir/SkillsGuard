@@ -21,6 +21,11 @@
  *   --no-config       Skip loading skillsguard.config.json
  *   --help            Show this help
  *
+ * Pre-commit hook subcommands:
+ *   skillsguard install-hook [--hook-severity LEVEL] [--hook-max-risk N]
+ *                            [--hook-exit-zero] [--hook-json] [--hook-sarif] [--dry-run]
+ *   skillsguard uninstall-hook [--dry-run]
+ *
  * Exit codes:
  *   0  No findings (or --exit-zero)
  *   1  One or more findings at/above --min-severity  OR  risk score > --max-risk
@@ -37,6 +42,7 @@ import { SEVERITY_RANK } from "./types.js";
 import { runMcpServer } from "./mcp.js";
 import { setupMcp } from "./setup.js";
 import { installHook, uninstallHook } from "./hook.js";
+import type { UninstallOutcome } from "./hook.js";
 
 const VALID_SEVERITIES = new Set<string>(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]);
 
@@ -328,8 +334,13 @@ async function main(): Promise<void> {
     const dryRun = args.includes("--dry-run");
     try {
       console.log("\nSkillsGuard — removing pre-commit hook");
-      const removed = await uninstallHook({ dryRun });
-      if (!removed && !dryRun) process.exit(1);
+      const outcome: UninstallOutcome = await uninstallHook({ dryRun });
+      if (outcome === "foreign-hook") {
+        // Hook exists but isn't ours — treat as a usage error so the caller
+        // knows they need to remove it manually before SkillsGuard can manage it.
+        process.exit(2);
+      }
+      if (outcome === "not-found" && !dryRun) process.exit(1);
     } catch (err: unknown) {
       console.error(`Error: ${String(err)}`);
       process.exit(2);

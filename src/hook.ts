@@ -24,7 +24,7 @@ import {
   mkdirSync,
   unlinkSync,
 } from "node:fs";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import type { Severity } from "./types.js";
 
@@ -55,7 +55,7 @@ export interface HookOptions {
    */
   json?: boolean;
   /**
-   * Emit SARIF 2.1.0 output. Mutually exclusive with --json.
+   * Emit SARIF 2.1.0 output. Mutually exclusive with json.
    */
   sarif?: boolean;
   /**
@@ -71,19 +71,22 @@ export interface HookOptions {
 export interface HookResult {
   /** Absolute path to .git/hooks/pre-commit */
   hookPath: string;
-  /** Whether this is a new install (true) or an update (false). */
+  /** Whether this is a new install (true) or an update to an existing hook (false). */
   created: boolean;
-  /** Path to the backup of the previous hook, if one existed. */
+  /** Path to the backup of the previous non-SkillsGuard hook, if one existed. */
   backupPath?: string;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+/**
+ * Outcome of an uninstall attempt, distinguishing the three possible states
+ * so callers can act or report accurately without parsing console output.
+ */
+export type UninstallOutcome =
+  | "removed"        // hook was ours and has been deleted (or would be in dry-run)
+  | "not-found"      // no pre-commit hook exists at all
+  | "foreign-hook";  // a hook exists but was not created by SkillsGuard
 
-function runGitSync(args: string[], cwd: string): string {
-  // Use synchronous spawn-equivalent via execFileSync-like approach with spawn
-  // We keep this sync-free by returning a promise, but the caller site is async.
-  return ""; // placeholder — real impl below uses async
-}
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function findGitRoot(startDir: string): Promise<string> {
   return new Promise((res, rej) => {
@@ -104,19 +107,27 @@ async function findGitRoot(startDir: string): Promise<string> {
 }
 
 /**
- * Resolve the absolute path to the skillsguard binary / dist/cli.js
- * that is currently running (or installed globally).
+ * Resolve the invocation for the generated hook script.
  *
  * Priority:
- *   1. The running process argv[1] if it ends with cli.js / skillsguard
- *   2. `npx skillsguard` — portable fallback that works post-npm-install
+ *   1. The running process argv[1] when it points at our cli entry-point
+ *      (ends with /dist/cli.js or /skillsguard). The path is shell-quoted
+ *      to survive spaces in directory names.
+ *   2. `npx skillsguard` — safe portable fallback after a global npm install.
  */
 function resolveRunnerCommand(): { command: string; args: string[] } {
   const argv1 = process.argv[1] ?? "";
-  if (argv1.endsWith("cli.js") || argv1.endsWith("skillsguard")) {
-    return { command: "node", args: [resolve(argv1)] };
+  const resolved = resolve(argv1);
+
+  if (resolved.endsWith(`/dist/cli.js`) || resolved.endsWith(`/skillsguard`)) {
+    // Shell-quote the absolute path so spaces in directory names don't break
+    // the generated hook script (single-quotes; no single-quotes in POSIX paths).
+    const quoted = `'${resolved}'`;
+    return { command: "node", args: [quoted] };
   }
-  // Fallback: use npx so the hook works even after global install paths change
+
+  // Fallback: npx resolves the globally installed binary at run-time, so the
+  // hook stays valid even if the package is later reinstalled to a new path.
   return { command: "npx", args: ["skillsguard"] };
 }
 
@@ -131,7 +142,6 @@ function buildHookScript(opts: HookOptions): string {
   if (opts.sarif) extraFlags.push("--sarif");
   else if (opts.json) extraFlags.push("--json");
 
-  // Compose the invocation line
   const invocation = [command, ...args, ...extraFlags].join(" ");
 
   return `#!/bin/sh
@@ -163,7 +173,7 @@ export async function installHook(opts: HookOptions = {}): Promise<HookResult> {
   const hookPath = join(hooksDir, "pre-commit");
   const dryRun = opts.dryRun ?? false;
 
-  // Ensure .git/hooks exists (bare repos, fresh clones)
+  // Ensure .git/hooks exists (bare repos, fresh clones may not have it)
   if (!dryRun && !existsSync(hooksDir)) {
     mkdirSync(hooksDir, { recursive: true });
   }
@@ -176,7 +186,6 @@ export async function installHook(opts: HookOptions = {}): Promise<HookResult> {
     const isMine = existing.includes(HOOK_SENTINEL);
 
     if (!isMine) {
-      // Preserve the user's hook
       backupPath = `${hookPath}.bak`;
       if (!dryRun) {
         copyFileSync(hookPath, backupPath);
@@ -185,15 +194,15 @@ export async function installHook(opts: HookOptions = {}): Promise<HookResult> {
         console.log(`  [dry-run] Would back up existing hook → ${backupPath}`);
       }
     }
-    created = false; // it's an update / overwrite
+    created = false;
   }
 
   const script = buildHookScript({
     minSeverity: opts.minSeverity ?? "HIGH",
-    maxRisk: opts.maxRisk,
-    exitZero: opts.exitZero ?? false,
-    json: opts.json ?? false,
-    sarif: opts.sarif ?? false,
+    maxRisk:     opts.maxRisk,
+    exitZero:    opts.exitZero  ?? false,
+    json:        opts.json      ?? false,
+    sarif:       opts.sarif     ?? false,
   });
 
   if (dryRun) {
@@ -203,7 +212,7 @@ export async function installHook(opts: HookOptions = {}): Promise<HookResult> {
     console.log("─────────────────────────────────────────────────────────");
   } else {
     writeFileSync(hookPath, script, "utf-8");
-    chmodSync(hookPath, 0o755); // make executable
+    chmodSync(hookPath, 0o755);
   }
 
   return { hookPath, created, backupPath };
@@ -212,32 +221,37 @@ export async function installHook(opts: HookOptions = {}): Promise<HookResult> {
 /**
  * Remove the SkillsGuard pre-commit hook.
  *
- * Only removes hooks that contain our sentinel comment.
+ * Only removes hooks that contain the SkillsGuard sentinel comment.
  * If a `.bak` backup exists, it is restored automatically.
- * Returns true if the hook was removed (or would be in dry-run), false if not found.
+ *
+ * Returns an {@link UninstallOutcome} so callers can distinguish between
+ * "hook not present", "hook is foreign", and "hook removed" without
+ * parsing console output.
  */
-export async function uninstallHook(opts: { repoDir?: string; dryRun?: boolean } = {}): Promise<boolean> {
-  const repoDir = opts.repoDir ?? process.cwd();
-  const dryRun = opts.dryRun ?? false;
-  const gitRoot = await findGitRoot(repoDir);
+export async function uninstallHook(
+  opts: { repoDir?: string; dryRun?: boolean } = {},
+): Promise<UninstallOutcome> {
+  const repoDir  = opts.repoDir ?? process.cwd();
+  const dryRun   = opts.dryRun  ?? false;
+  const gitRoot  = await findGitRoot(repoDir);
   const hookPath = join(gitRoot, ".git", "hooks", "pre-commit");
   const backupPath = `${hookPath}.bak`;
 
   if (!existsSync(hookPath)) {
     console.log("  No pre-commit hook found.");
-    return false;
+    return "not-found";
   }
 
   const existing = readFileSync(hookPath, "utf-8");
   if (!existing.includes(HOOK_SENTINEL)) {
     console.log("  pre-commit hook exists but was not created by SkillsGuard — leaving it untouched.");
-    return false;
+    return "foreign-hook";
   }
 
   if (dryRun) {
     console.log(`  [dry-run] Would remove: ${hookPath}`);
     if (existsSync(backupPath)) console.log(`  [dry-run] Would restore backup: ${backupPath}`);
-    return true;
+    return "removed";
   }
 
   if (existsSync(backupPath)) {
@@ -249,5 +263,5 @@ export async function uninstallHook(opts: { repoDir?: string; dryRun?: boolean }
     console.log(`  Removed: ${hookPath}`);
   }
 
-  return true;
+  return "removed";
 }

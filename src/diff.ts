@@ -44,7 +44,10 @@ async function findGitRoot(startDir: string): Promise<string> {
     try {
       await stat(join(dir, ".git"));
       return dir;
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof Error && "code" in err && err.code !== "ENOENT") {
+        throw err;
+      }
       const parent = dirname(dir);
       if (parent === dir) throw new Error("Not a git repository (could not find .git)");
       dir = parent;
@@ -117,8 +120,12 @@ export async function scanGitDiff(opts: GitDiffOptions = {}): Promise<ScanResult
       const sub = await scan(file, opts);
       allFindings.push(...sub.findings);
       scannedCount += sub.filesScanned;
-    } catch {
-      // File may have been renamed/deleted between diff and read — skip silently
+    } catch (err: unknown) {
+      if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+        // File was deleted/renamed since diff — skip silently
+        continue;
+      }
+      throw err;
     }
   }
 

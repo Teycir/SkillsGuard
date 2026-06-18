@@ -41,7 +41,15 @@ export interface SkillsGuardConfig {
 }
 
 async function fileExists(p: string): Promise<boolean> {
-  try { await stat(p); return true; } catch { return false; }
+  try {
+    await stat(p);
+    return true;
+  } catch (err: unknown) {
+    if (err instanceof Error && "code" in err && err.code === "ENOENT") {
+      return false;
+    }
+    throw err;
+  }
 }
 
 /**
@@ -103,7 +111,10 @@ export async function loadConfig(targetPath: string): Promise<SkillsGuardConfig 
     const s = await stat(targetPath);
     const searchDir = s.isDirectory() ? targetPath : dirname(targetPath);
     configPath = await findConfigFile(searchDir);
-  } catch {
+  } catch (err: unknown) {
+    if (err instanceof Error && "code" in err && err.code !== "ENOENT") {
+      throw err;
+    }
     // fall through to cwd search
   }
   if (!configPath) {
