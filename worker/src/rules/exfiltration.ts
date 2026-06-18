@@ -1,0 +1,1 @@
+/home/teycir/Repos/SkillsGuard/src/rules/exfiltration.ts

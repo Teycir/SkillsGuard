@@ -1,4 +1,4 @@
-name              = "skillsguard-api"
+name              = "skillsguard"
 main              = "src/worker.ts"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
@@ -8,6 +8,9 @@ enabled = true
 
 # ── Tunable config vars (change here, redeploy — no code edit needed) ─────────
 [vars]
+# Public base URL of this worker — update here when moving to a custom domain
+API_BASE_URL = "https://skillsguard.apiskillsguard.workers.dev"
+
 # Maximum request body in bytes (default 512 KB)
 MAX_BODY_BYTES = 524288
 
@@ -21,6 +24,12 @@ RATE_LIMIT_WINDOW_MS = 60000
 # Use "*" for fully public (any origin).
 # Use e.g. "https://skillsguard.dev,https://app.skillsguard.dev" to restrict.
 CORS_ALLOWED_ORIGINS = "*"
+
+# Maximum findings returned per scan response (prevents response amplification DoS)
+MAX_FINDINGS = 500
+
+# Maximum lines scanned per request (bounds CPU time per invocation)
+MAX_LINES = 10000
 
 # ── Durable Object for global rate limiting ────────────────────────────────────
 [[durable_objects.bindings]]

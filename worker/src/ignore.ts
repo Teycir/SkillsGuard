@@ -1,0 +1,1 @@
+../../src/lib/ignore.ts

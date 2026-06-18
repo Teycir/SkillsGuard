@@ -13,25 +13,21 @@
  *   Content-Type: application/json — { "content": "...", "filename": "SKILL.md" }
  *
  * Configuration (wrangler.toml [vars]):
- *   MAX_BODY_BYTES          default 524288  (512 KB)
- *   RATE_LIMIT_MAX          default 60      requests per window per IP
- *   RATE_LIMIT_WINDOW_MS    default 60000   (1 minute)
- *   CORS_ALLOWED_ORIGINS    default "*"     comma-separated or "*"
+ *   API_BASE_URL            public URL of this worker (no trailing slash)
+ *   MAX_BODY_BYTES          default 524288   (512 KB)
+ *   RATE_LIMIT_MAX          default 60       requests per window per IP
+ *   RATE_LIMIT_WINDOW_MS    default 60000    (1 minute)
+ *   CORS_ALLOWED_ORIGINS    default "*"      comma-separated or "*"
+ *   MAX_FINDINGS            default 500      cap on findings returned per scan
+ *   MAX_LINES               default 10000    cap on lines scanned per request
  *
- * Rate limiting:
- *   Uses a Durable Object (RateLimiterDO) for globally consistent per-IP
- *   counters across all isolates/regions. Falls back gracefully if DO is
- *   unavailable (allows the request, logs a warning).
- *
- * Response shape:
- *   {
- *     "filename":     "SKILL.md",
- *     "filesScanned": 1,
- *     "findings":     [...],
- *     "riskScore":    { "score": 75, "label": "HIGH" },
- *     "safe":         false,
- *     "durationMs":   12
- *   }
+ * Abuse mitigations:
+ *   - Durable Object rate limiter: globally consistent per-IP counters
+ *   - MAX_BODY_BYTES: hard cap on request body size
+ *   - MAX_LINES: cap lines before scanning to bound CPU per request
+ *   - MAX_FINDINGS: cap findings array before serialisation (prevents 18 MB responses)
+ *   - sanitizeFilename: strips traversal, null bytes, RTL/ZWJ control chars, dot-only names
+ *   - RateLimiterDO: guarded req.json() with try/catch; fail-open on DO error
  */
 
 import { scanText, computeRiskScore } from "./scanner.js";
@@ -40,38 +36,47 @@ import { findDecodedBlobs } from "./decode.js";
 // ─── Environment / config ─────────────────────────────────────────────────────
 
 export interface Env {
-  // Durable Object binding (global rate limiter)
-  RATE_LIMITER: DurableObjectNamespace;
-
-  // Tunable vars from wrangler.toml [vars]
-  MAX_BODY_BYTES:         string;   // numeric string
-  RATE_LIMIT_MAX:         string;   // numeric string
-  RATE_LIMIT_WINDOW_MS:   string;   // numeric string
-  CORS_ALLOWED_ORIGINS:   string;   // "*" or comma-separated list
+  RATE_LIMITER:         DurableObjectNamespace;
+  API_BASE_URL:         string;
+  MAX_BODY_BYTES:       string;
+  RATE_LIMIT_MAX:       string;
+  RATE_LIMIT_WINDOW_MS: string;
+  CORS_ALLOWED_ORIGINS: string;
+  MAX_FINDINGS:         string;
+  MAX_LINES:            string;
 }
 
 function cfg(env: Env) {
   return {
-    maxBody:    Math.max(1024, Number(env.MAX_BODY_BYTES)       || 524_288),
-    rateMax:    Math.max(1,    Number(env.RATE_LIMIT_MAX)       || 60),
-    rateWindow: Math.max(1000, Number(env.RATE_LIMIT_WINDOW_MS) || 60_000),
-    origins:    (env.CORS_ALLOWED_ORIGINS ?? "*").trim(),
+    apiBase:     (env.API_BASE_URL ?? "").trim().replace(/\/$/, ""),
+    maxBody:     Math.max(1024,  Number(env.MAX_BODY_BYTES)       || 524_288),
+    rateMax:     Math.max(1,     Number(env.RATE_LIMIT_MAX)       || 60),
+    rateWindow:  Math.max(1000,  Number(env.RATE_LIMIT_WINDOW_MS) || 60_000),
+    origins:     (env.CORS_ALLOWED_ORIGINS ?? "*").trim(),
+    maxFindings: Math.max(1,     Number(env.MAX_FINDINGS)          || 500),
+    maxLines:    Math.max(100,   Number(env.MAX_LINES)             || 10_000),
   };
 }
 
 // ─── Durable Object — global rate limiter ─────────────────────────────────────
-//
-// One DO stub per IP address. Stores { count, resetAt } in DO memory.
-// DO fetch is fast (<1 ms in same region) and globally consistent.
 
 export class RateLimiterDO {
   private count   = 0;
   private resetAt = 0;
 
   async fetch(req: Request): Promise<Response> {
-    const { max, windowMs } = await req.json() as { max: number; windowMs: number };
-    const now = Date.now();
+    // FIX: guard req.json() — malformed body from a retry/glitch must not crash the DO
+    let max = 60;
+    let windowMs = 60_000;
+    try {
+      const body = await req.json() as { max?: unknown; windowMs?: unknown };
+      if (typeof body.max      === "number") max      = body.max;
+      if (typeof body.windowMs === "number") windowMs = body.windowMs;
+    } catch {
+      // use defaults — still apply rate limiting with sensible values
+    }
 
+    const now = Date.now();
     if (now > this.resetAt) {
       this.count   = 0;
       this.resetAt = now + windowMs;
@@ -81,11 +86,7 @@ export class RateLimiterDO {
     const remaining = Math.max(0, max - this.count);
     const limited   = this.count > max;
 
-    return Response.json({
-      limited,
-      remaining,
-      resetAt: this.resetAt,
-    });
+    return Response.json({ limited, remaining, resetAt: this.resetAt });
   }
 }
 
@@ -94,12 +95,11 @@ export class RateLimiterDO {
 function corsHeaders(req: Request, allowedOrigins: string): Record<string, string> {
   const origin  = req.headers.get("Origin") ?? "";
   const allowed = resolveOrigin(origin, allowedOrigins);
-
   return {
-    "Access-Control-Allow-Origin":   allowed,
-    "Access-Control-Allow-Methods":  "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers":  "Content-Type",
-    "Access-Control-Max-Age":        "86400",   // 24 h — browsers cache preflight
+    "Access-Control-Allow-Origin":  allowed,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age":       "86400",
     ...(allowed !== "*" ? { "Vary": "Origin" } : {}),
   };
 }
@@ -110,7 +110,7 @@ function resolveOrigin(requestOrigin: string, allowedOrigins: string): string {
   return list.includes(requestOrigin) ? requestOrigin : list[0] ?? "*";
 }
 
-// ─── Security headers (returned on every response) ───────────────────────────
+// ─── Security headers ─────────────────────────────────────────────────────────
 
 const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
@@ -120,46 +120,45 @@ const SECURITY_HEADERS: Record<string, string> = {
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
-function jsonResp(
-  body: unknown,
-  status: number,
-  extra: Record<string, string> = {},
-): Response {
+function jsonResp(body: unknown, status: number, extra: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body, null, 2), {
     status,
-    headers: {
-      "Content-Type": "application/json",
-      ...SECURITY_HEADERS,
-      ...extra,
-    },
+    headers: { "Content-Type": "application/json", ...SECURITY_HEADERS, ...extra },
   });
 }
 
 function textResp(body: string, extra: Record<string, string> = {}): Response {
   return new Response(body, {
     status: 200,
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      ...SECURITY_HEADERS,
-      ...extra,
-    },
+    headers: { "Content-Type": "text/plain; charset=utf-8", ...SECURITY_HEADERS, ...extra },
   });
 }
 
 // ─── Input sanitisation ───────────────────────────────────────────────────────
 
-/** Strip path traversal and keep only the basename, max 255 chars. */
+/**
+ * Sanitize a user-supplied filename:
+ *   - strip null bytes and C0/C1 control characters
+ *   - strip Unicode direction overrides (RTL, LRO, RLO, etc.) and zero-width chars
+ *   - take only the last path segment (no traversal)
+ *   - reject dot-only names (. and ..)
+ *   - cap at 255 characters
+ */
 function sanitizeFilename(raw: string): string {
-  // Take only the last path segment, strip null bytes and control chars
-  const base = raw
-    .replace(/\0/g, "")
-    .split(/[/\\]/)
-    .filter(Boolean)
-    .pop() ?? "SKILL.md";
-  return base.slice(0, 255) || "SKILL.md";
+  const cleaned = raw
+    .replace(/\0/g, "")                           // null bytes
+    .replace(/[\x01-\x1f\x7f-\x9f]/g, "")        // C0/C1 control chars
+    .replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/g, ""); // ZWJ, RTL overrides, BOM
+
+  const base = cleaned.split(/[/\\]/).filter(Boolean).pop() ?? "SKILL.md";
+  const trimmed = base.slice(0, 255);
+
+  // Reject dot-only names
+  if (/^\.+$/.test(trimmed) || trimmed === "") return "SKILL.md";
+  return trimmed;
 }
 
-// ─── Rate limiter call ────────────────────────────────────────────────────────
+// ─── Rate limiter ─────────────────────────────────────────────────────────────
 
 interface RateLimitResult {
   limited:   boolean;
@@ -168,10 +167,7 @@ interface RateLimitResult {
 }
 
 async function checkRateLimit(
-  ip: string,
-  env: Env,
-  rateMax: number,
-  rateWindow: number,
+  ip: string, env: Env, rateMax: number, rateWindow: number,
 ): Promise<RateLimitResult> {
   try {
     const id   = env.RATE_LIMITER.idFromName(ip);
@@ -183,7 +179,6 @@ async function checkRateLimit(
     });
     return await res.json() as RateLimitResult;
   } catch (err) {
-    // DO unavailable — fail open (don't block legitimate traffic)
     console.warn("RateLimiterDO unavailable:", err);
     return { limited: false, remaining: rateMax, resetAt: Date.now() + rateWindow };
   }
@@ -191,8 +186,8 @@ async function checkRateLimit(
 
 // ─── Landing page ─────────────────────────────────────────────────────────────
 
-function makeLanding(rateMax: number): string {
-  const base = "https://skillsguard-api.teycircoder13.workers.dev";
+function makeLanding(apiBase: string, rateMax: number, maxLines: number, maxFindings: number): string {
+  const base = apiBase;
   return `
 SkillsGuard API — free public scanner for AI agent skills
 ==========================================================
@@ -225,9 +220,11 @@ Endpoints:
   POST /scan     Scan skill content, return JSON findings
 
 Limits:
-  Rate limit  ${rateMax} req / minute / IP  (headers: X-RateLimit-*)
-  Max payload 512 KB
-  Auth        none
+  Rate limit   ${rateMax} req / minute / IP  (X-RateLimit-* headers on every response)
+  Max payload  512 KB
+  Max lines    ${maxLines.toLocaleString()} lines scanned per request
+  Max findings ${maxFindings} findings returned per response
+  Auth         none
 
 Self-hosted / CLI:
   npx skillsguard@latest ./SKILL.md
@@ -237,8 +234,13 @@ Self-hosted / CLI:
 
 // ─── /scan handler ────────────────────────────────────────────────────────────
 
-async function handleScan(req: Request, maxBody: number): Promise<Response> {
-  // ── Body size: pre-check header, hard-check after read ──
+async function handleScan(
+  req: Request,
+  maxBody: number,
+  maxFindings: number,
+  maxLines: number,
+): Promise<Response> {
+  // ── Body size guards ──
   const clHeader = req.headers.get("content-length");
   if (clHeader !== null && Number(clHeader) > maxBody) {
     return jsonResp({ error: "Payload too large (max 512 KB)" }, 413);
@@ -250,7 +252,6 @@ async function handleScan(req: Request, maxBody: number): Promise<Response> {
   } catch {
     return jsonResp({ error: "Failed to read request body" }, 400);
   }
-
   if (raw.byteLength > maxBody) {
     return jsonResp({ error: "Payload too large (max 512 KB)" }, 413);
   }
@@ -260,7 +261,6 @@ async function handleScan(req: Request, maxBody: number): Promise<Response> {
   // ── Parse content + filename ──
   let content  = "";
   let filename = "SKILL.md";
-
   const ct = (req.headers.get("content-type") ?? "").toLowerCase();
 
   if (ct.includes("application/json")) {
@@ -282,7 +282,6 @@ async function handleScan(req: Request, maxBody: number): Promise<Response> {
       filename = sanitizeFilename(obj["filename"] as string);
     }
   } else {
-    // Plain text or any other Content-Type — treat body as raw skill content
     content = bodyText;
     const qf = new URL(req.url).searchParams.get("filename");
     if (qf) filename = sanitizeFilename(qf);
@@ -292,43 +291,61 @@ async function handleScan(req: Request, maxBody: number): Promise<Response> {
     return jsonResp({ error: "Empty content — nothing to scan" }, 400);
   }
 
+  // ── FIX: cap lines before scanning to bound CPU per request ──
+  const lines = content.split("\n");
+  let truncated = false;
+  let effectiveContent = content;
+  if (lines.length > maxLines) {
+    effectiveContent = lines.slice(0, maxLines).join("\n");
+    truncated = true;
+  }
+
   // ── Scan ──
   const start = Date.now();
 
-  const rawFindings  = scanText(content, filename);
-  const blobs        = findDecodedBlobs(content);
+  const rawFindings  = scanText(effectiveContent, filename);
+  const blobs        = findDecodedBlobs(effectiveContent);
   const blobFindings = blobs.flatMap((blob) =>
     scanText(blob.decoded, filename, `${blob.encoding}:${blob.raw.slice(0, 40)}`),
   );
 
-  // Deduplicate: prefer finding with decodedFrom set (more informative)
+  // Deduplicate
   const seen = new Map<string, (typeof rawFindings)[0]>();
   for (const f of [...rawFindings, ...blobFindings]) {
     const key      = `${f.ruleId}:${f.file}:${f.line}`;
     const existing = seen.get(key);
-    if (!existing || (!existing.decodedFrom && f.decodedFrom)) {
-      seen.set(key, f);
-    }
+    if (!existing || (!existing.decodedFrom && f.decodedFrom)) seen.set(key, f);
   }
 
-  const findings  = [...seen.values()];
-  const riskScore = computeRiskScore(findings);
+  const allFindings = [...seen.values()];
 
-  return jsonResp({
+  // ── FIX: cap findings to prevent response size amplification ──
+  const findingsCapped = allFindings.length > maxFindings;
+  const findings       = findingsCapped ? allFindings.slice(0, maxFindings) : allFindings;
+  const riskScore      = computeRiskScore(allFindings); // score uses full set
+
+  const resp: Record<string, unknown> = {
     filename,
     filesScanned: 1,
     findings,
     riskScore,
-    safe: findings.length === 0,
+    safe: allFindings.length === 0,
     durationMs: Date.now() - start,
-  }, 200);
+  };
+
+  // Surface truncation warnings so callers know the scan was partial
+  if (truncated)      resp["warning"] = `Input truncated: only the first ${maxLines.toLocaleString()} lines were scanned`;
+  if (findingsCapped) resp["findingsTruncated"] = true;
+  if (findingsCapped) resp["totalFindings"]     = allFindings.length;
+
+  return jsonResp(resp, 200);
 }
 
 // ─── Main fetch handler ───────────────────────────────────────────────────────
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
-    const { maxBody, rateMax, rateWindow, origins } = cfg(env);
+    const { apiBase, maxBody, rateMax, rateWindow, origins, maxFindings, maxLines } = cfg(env);
     const cors = corsHeaders(req, origins);
 
     // ── CORS preflight ──
@@ -336,32 +353,31 @@ export default {
       return new Response(null, { status: 204, headers: { ...cors, ...SECURITY_HEADERS } });
     }
 
-    // ── Rate limiting (global via Durable Object) ──
-    const ip  = req.headers.get("cf-connecting-ip") ?? "unknown";
-    const rl  = await checkRateLimit(ip, env, rateMax, rateWindow);
+    // ── Rate limiting ──
+    const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
+    const rl = await checkRateLimit(ip, env, rateMax, rateWindow);
 
     const rlHeaders: Record<string, string> = {
       "X-RateLimit-Limit":     String(rateMax),
       "X-RateLimit-Remaining": String(rl.remaining),
-      "X-RateLimit-Reset":     String(Math.ceil(rl.resetAt / 1000)), // Unix seconds
+      "X-RateLimit-Reset":     String(Math.ceil(rl.resetAt / 1000)),
     };
 
     if (rl.limited) {
-      const retryAfter = Math.ceil((rl.resetAt - Date.now()) / 1000);
+      const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
       return jsonResp(
-        { error: `Rate limit exceeded — max ${rateMax} requests/minute. Retry in ${retryAfter}s.` },
+        { error: `Rate limit exceeded — max ${rateMax} req/minute. Retry in ${retryAfter}s.` },
         429,
         { ...cors, ...rlHeaders, "Retry-After": String(retryAfter) },
       );
     }
 
     // ── Routing ──
-    const url    = new URL(req.url);
-    const path   = url.pathname.replace(/\/+$/, "") || "/";
+    const path   = new URL(req.url).pathname.replace(/\/+$/, "") || "/";
     const method = req.method;
 
     if (method === "GET" && path === "/") {
-      return textResp(makeLanding(rateMax), { ...cors, ...rlHeaders });
+      return textResp(makeLanding(apiBase, rateMax, maxLines, maxFindings), { ...cors, ...rlHeaders });
     }
 
     if (method === "GET" && path === "/health") {
@@ -369,13 +385,12 @@ export default {
     }
 
     if (method === "POST" && path === "/scan") {
-      const res = await handleScan(req, maxBody);
-      // Attach CORS + rate limit headers to the scan response
+      const res = await handleScan(req, maxBody, maxFindings, maxLines);
       const out = new Response(res.body, res);
       Object.entries({ ...cors, ...rlHeaders }).forEach(([k, v]) => out.headers.set(k, v));
       return out;
     }
 
-    return jsonResp({ error: `Not found: ${method} ${path}` }, 404, { ...cors });
+    return jsonResp({ error: `Not found: ${method} ${path}` }, 404, cors);
   },
 };
