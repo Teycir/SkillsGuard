@@ -7,6 +7,7 @@ export const PROMPT_INJECTION_RULES: readonly Rule[] = [
     severity: "CRITICAL",
     pattern: /ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|rules?|guidelines?|constraints?|prompts?)/i,
     message: "Classic prompt injection: instructs Claude to ignore prior guidelines",
+    remediation: "This phrase is the canonical prompt injection vector. If present in a skill, it must be removed — there is no legitimate use case for a skill instructing the model to ignore its prior guidelines.",
   },
   {
     id: "PI-002",

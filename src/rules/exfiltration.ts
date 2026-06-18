@@ -7,6 +7,7 @@ export const EXFILTRATION_RULES: readonly Rule[] = [
     severity: "CRITICAL",
     pattern: /\b(curl|wget|fetch|axios|got|http\.get|https\.get)\b[^#\n]*\b(env|secret|token|key|password|credential|api[-_]?key)\b/i,
     message: "Exfiltration: network request combined with secrets/env access",
+    remediation: "Never include API keys, tokens, or secrets in network requests from a skill. Credentials should stay local. If telemetry is needed, use only non-sensitive metadata and route through an authenticated internal endpoint.",
     skipCommentLines: true,
     skipPlaceholderLines: true,
   },

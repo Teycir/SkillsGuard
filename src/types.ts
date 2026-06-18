@@ -30,6 +30,11 @@ export interface Rule {
    * fire heavily on documentation examples.
    */
   skipPlaceholderLines?: boolean;
+  /**
+   * Optional human-readable remediation guidance surfaced by `skillsguard rules`
+   * and `--suggest-fix`. Populated for CRITICAL and HIGH rules.
+   */
+  remediation?: string;
 }
 
 export interface Finding {
@@ -99,4 +104,21 @@ export interface ScanOptions {
    * `skillsguard-ignore` comments). Typically populated from config file.
    */
   ignoreRules?: string[];
+  /**
+   * Per-rule severity overrides. Key is rule ID, value is the desired severity.
+   * Lets teams tune severity to their own risk model without forking rules.
+   * e.g. { "EX-008": "CRITICAL", "OB-001": "MEDIUM" }
+   */
+  severityOverrides?: Partial<Record<string, Severity>>;
+  /**
+   * Glob-style path segments to exclude from scanning.
+   * A file is excluded if any segment matches a component of its path.
+   * e.g. ["vendor", "third_party", "generated"]
+   */
+  excludePatterns?: string[];
+  /**
+   * Stop scanning after this many findings (fast-fail for CI pipelines).
+   * Undefined or 0 means no limit.
+   */
+  maxFindings?: number;
 }

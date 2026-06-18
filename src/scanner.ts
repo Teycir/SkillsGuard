@@ -41,6 +41,7 @@ const SKIP_DIRS = new Set<string>([
   "__pycache__", ".mypy_cache", ".pytest_cache", "coverage",
   ".next", ".open-next", ".wrangler", "target", ".cargo",
   ".venv", "venv", "env", ".tox",
+  ".skillsguard", // baseline + config artifacts — never scan our own output
 ]);
 
 const MAX_FILE_SIZE = 512 * 1024; // 512 KB — skip suspiciously large files
@@ -74,20 +75,35 @@ export function resolveCustomRule(raw: CustomRule, index?: number): Rule {
 
 /**
  * Build the effective rule list for a scan, merging built-ins + extras.
+ * Applies severity overrides after the list is assembled.
  */
 function resolveRules(options?: ScanOptions): readonly Rule[] {
   const extras = (options?.extraRules ?? []).map((r, i) => resolveCustomRule(r, i + 1));
   const base = options?.rulesOnly ? extras : [...RULES, ...extras];
-  if (!options?.ignoreRules?.length) return base;
-  const ignored = new Set(options.ignoreRules);
-  return base.filter((r) => !ignored.has(r.id));
+
+  const afterIgnore = options?.ignoreRules?.length
+    ? base.filter((r) => !new Set(options.ignoreRules).has(r.id))
+    : base;
+
+  // Apply per-rule severity overrides
+  const overrides = options?.severityOverrides;
+  if (!overrides || Object.keys(overrides).length === 0) return afterIgnore;
+  return afterIgnore.map((r) =>
+    overrides[r.id] ? { ...r, severity: overrides[r.id]! } : r,
+  );
 }
 
 // ─── File discovery ──────────────────────────────────────────────────────────
 
-async function collectFiles(target: string, rootDir: string): Promise<{ readonly files: readonly string[]; readonly errors: readonly Finding[] }> {
+async function collectFiles(
+  target: string,
+  rootDir: string,
+  options?: ScanOptions,
+): Promise<{ readonly files: readonly string[]; readonly errors: readonly Finding[] }> {
   const s = await stat(target);
   if (s.isFile()) return { files: [target], errors: [] };
+
+  const excludeSet = new Set(options?.excludePatterns ?? []);
 
   const files: string[] = [];
   const errors: Finding[] = [];
@@ -164,10 +180,14 @@ async function collectFiles(target: string, rootDir: string): Promise<{ readonly
       }
 
       if (isDir) {
-        if (!SKIP_DIRS.has(entry.name)) {
+        if (!SKIP_DIRS.has(entry.name) && !excludeSet.has(entry.name)) {
           queue.push(full);
         }
       } else {
+        // Skip files whose name or any path component matches an exclude pattern
+        const relFull = relative(rootDir, full);
+        const pathParts = relFull.split(/[\\/]/);
+        if (excludeSet.size > 0 && pathParts.some((p) => excludeSet.has(p))) continue;
         const ext = extname(entry.name).toLowerCase();
         const nameNoExt = entry.name.toLowerCase();
         if (
@@ -359,12 +379,24 @@ export async function scan(target: string, options?: ScanOptions): Promise<ScanR
     throw new Error(`Cannot access target '${target}': ${msg}`);
   }
 
-  const { files, errors } = await collectFiles(target, rootDir);
-  const scanResults = await runConcurrent(files, 16, (file) => scanFile(file, rootDir, options));
-  
+  const { files, errors } = await collectFiles(target, rootDir, options);
+
+  const maxFindings = options?.maxFindings ?? 0;
   const allFindings: Finding[] = [...errors];
-  for (const findings of scanResults) {
-    allFindings.push(...findings);
+
+  // runConcurrent doesn't support early-exit, so for maxFindings we fall back
+  // to sequential scanning so we can stop as soon as the cap is hit.
+  if (maxFindings > 0) {
+    for (const file of files) {
+      if (allFindings.length >= maxFindings) break;
+      const findings = await scanFile(file, rootDir, options);
+      allFindings.push(...findings);
+    }
+  } else {
+    const scanResults = await runConcurrent(files, 16, (file) => scanFile(file, rootDir, options));
+    for (const findings of scanResults) {
+      allFindings.push(...findings);
+    }
   }
 
   const dedupedFindings = [...dedup(allFindings)];

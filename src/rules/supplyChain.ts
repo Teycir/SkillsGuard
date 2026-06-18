@@ -43,6 +43,7 @@ export const SUPPLY_CHAIN_RULES: readonly Rule[] = [
     severity: "CRITICAL",
     pattern: /postinstall['":\s]+[^#\n]*(curl|wget|bash|sh|python|node)[^#\n]*(https?:\/\/|http:\/\/)/i,
     message: "Supply chain: postinstall script fetches code from the internet",
+    remediation: "Postinstall hooks that download and execute remote code are a critical supply-chain attack vector. Pin all dependencies to exact versions with lock files and integrity hashes; never fetch code at install time.",
     skipCommentLines: true,
     skipPlaceholderLines: true,
   },

@@ -38,6 +38,18 @@ export interface SkillsGuardConfig {
   rulesOnly?: boolean;
   /** Fail (exit 1) when the computed risk score exceeds this threshold [0-100]. */
   maxRiskScore?: number | null;
+  /**
+   * Per-rule severity overrides applied at scan time.
+   * e.g. { "EX-008": "CRITICAL", "OB-001": "MEDIUM" }
+   */
+  severityOverrides?: Partial<Record<string, Severity>>;
+  /**
+   * Path segments to exclude from scanning (matched against each path component).
+   * e.g. ["vendor", "third_party", "generated"]
+   */
+  excludePatterns?: string[];
+  /** Stop scanning after this many findings. 0 = no limit. */
+  maxFindings?: number;
 }
 
 async function fileExists(p: string): Promise<boolean> {
@@ -92,6 +104,28 @@ function parseConfigRaw(raw: unknown, filePath: string): SkillsGuardConfig {
   if ("ignoreRules" in obj) {
     if (!Array.isArray(obj["ignoreRules"])) throw new Error(`${filePath}: ignoreRules must be an array`);
     cfg.ignoreRules = (obj["ignoreRules"] as unknown[]).map(String);
+  }
+  if ("excludePatterns" in obj) {
+    if (!Array.isArray(obj["excludePatterns"])) throw new Error(`${filePath}: excludePatterns must be an array`);
+    cfg.excludePatterns = (obj["excludePatterns"] as unknown[]).map(String);
+  }
+  if ("severityOverrides" in obj) {
+    const raw = obj["severityOverrides"];
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+      throw new Error(`${filePath}: severityOverrides must be an object`);
+    }
+    const overrides: Partial<Record<string, Severity>> = {};
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      const sev = String(v).toUpperCase();
+      if (!VALID_SEVERITIES.has(sev)) throw new Error(`${filePath}: severityOverrides["${k}"] "${v}" is not a valid severity`);
+      overrides[k] = sev as Severity;
+    }
+    cfg.severityOverrides = overrides;
+  }
+  if ("maxFindings" in obj) {
+    const v = Number(obj["maxFindings"]);
+    if (!Number.isInteger(v) || v < 0) throw new Error(`${filePath}: maxFindings must be a non-negative integer`);
+    cfg.maxFindings = v;
   }
   if ("extraRules" in obj) {
     if (!Array.isArray(obj["extraRules"])) throw new Error(`${filePath}: extraRules must be an array`);

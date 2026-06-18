@@ -7,6 +7,7 @@ export const COMMAND_INJECTION_RULES: readonly Rule[] = [
     severity: "CRITICAL",
     pattern: /\beval\b[^#\n]*\$\(/i,
     message: "Command injection: eval with command substitution — classic code execution",
+    remediation: "Remove eval entirely. If dynamic execution is required, use an explicit allowlist of permitted commands rather than evaluating arbitrary input.",
     // READMEs explaining why eval is bad are the #1 FP source for this rule.
     skipCommentLines: true,
   },
@@ -16,6 +17,7 @@ export const COMMAND_INJECTION_RULES: readonly Rule[] = [
     severity: "CRITICAL",
     pattern: /\beval\b[^#\n]*(base64|hex|decode|echo|printf)/i,
     message: "Command injection: eval decoding encoded payload — obfuscated execution",
+    remediation: "Encoded payloads inside eval are a strong indicator of malicious obfuscation. Remove the eval and the encoding layer; if the content is legitimate, inline it as a plain string.",
     skipCommentLines: true,
   },
   {

@@ -4,37 +4,36 @@
  *
  * Usage:
  *   skillsguard <target> [options]
+ *   skillsguard rules [ID] [--category CAT] [--severity SEV]
+ *   skillsguard tune <RULE-ID> --severity <SEV> [--config <path>]
  *   skillsguard install-hook [hook-options]
  *   skillsguard uninstall-hook [--dry-run]
  *
  * Options:
- *   --json            Output JSON instead of human-readable text
- *   --sarif           Output SARIF 2.1.0 (GitHub Code Scanning)
- *   --no-color        Disable ANSI colors
- *   --min-severity    Only report at or above this level (CRITICAL|HIGH|MEDIUM|LOW|INFO)
- *   --exit-zero       Always exit 0 (useful in CI to collect results without failing)
- *   --max-risk        Fail (exit 1) if risk score exceeds this value [0-100]
- *   --rule <spec>     Add a custom regex rule (repeatable). Format:
- *                       "PATTERN"                   — bare regex, HIGH severity
- *                       "id:sev:cat:msg:PATTERN"    — fully specified
- *   --rules-only      Run ONLY the custom --rule patterns; skip built-in rules
- *   --no-config       Skip loading skillsguard.config.json
- *   --help            Show this help
- *
- * Pre-commit hook subcommands:
- *   skillsguard install-hook [--hook-severity LEVEL] [--hook-max-risk N]
- *                            [--hook-exit-zero] [--hook-json] [--hook-sarif] [--dry-run]
- *   skillsguard uninstall-hook [--dry-run]
- *
- * Exit codes:
- *   0  No findings (or --exit-zero)
- *   1  One or more findings at/above --min-severity  OR  risk score > --max-risk
- *   2  Usage error / target not found
+ *   --json                  Output JSON
+ *   --sarif                 Output SARIF 2.1.0
+ *   --no-color              Disable ANSI colors
+ *   --min-severity          Only report at or above level (CRITICAL|HIGH|MEDIUM|LOW|INFO)
+ *   --exit-zero             Always exit 0
+ *   --max-risk <n>          Fail if risk score exceeds n [0-100]
+ *   --quiet                 Suppress all output; only exit code matters
+ *   --stats                 Print category/severity breakdown instead of full findings
+ *   --max-findings <n>      Stop after n findings (fast-fail)
+ *   --exclude <pattern>     Exclude path segment from scan (repeatable)
+ *   --severity-override     Override rule severity: id:SEV (repeatable)
+ *   --save-baseline         Snapshot current findings as the baseline
+ *   --diff-baseline         Only show NEW findings vs saved baseline
+ *   --update-baseline       Merge new findings into existing baseline
+ *   --watch                 Re-scan on file changes, print delta
+ *   --rule <spec>           Add a custom regex rule (repeatable)
+ *   --rules-only            Run ONLY the custom --rule patterns
+ *   --no-config             Skip loading skillsguard.config.json
+ *   --help                  Show this help
  */
 
 import { scan, computeRiskScore } from "./scanner.js";
 import { scanGitDiff } from "./diff.js";
-import { reportHuman, reportJson } from "./report.js";
+import { reportHuman, reportJson, reportStats, reportBaselineDiff } from "./report.js";
 import { reportSarif } from "./sarif.js";
 import { loadConfig } from "./config.js";
 import type { Severity, ScanResult, CustomRule } from "./types.js";
@@ -42,9 +41,13 @@ import { SEVERITY_RANK } from "./types.js";
 import { runMcpServer } from "./mcp.js";
 import { setupMcp } from "./setup.js";
 import { installHook, uninstallHook } from "./hook.js";
+import { exploreRules } from "./explorer.js";
+import { startWatch } from "./watch.js";
+import { loadBaseline, saveBaseline, updateBaseline, diffBaseline } from "./lib/baseline.js";
 import type { UninstallOutcome } from "./hook.js";
 
 const VALID_SEVERITIES = new Set<string>(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]);
+
 
 function usage(): void {
   console.error(`
@@ -52,6 +55,8 @@ SkillsGuard — static security scanner for AI agent skills
 
 Usage:
   skillsguard <target> [options]
+  skillsguard rules [ID] [--category CAT] [--severity SEV]
+  skillsguard tune <RULE-ID> --severity <SEV> [--config <path>]
   skillsguard server [port]
   skillsguard install-hook [hook-options]
   skillsguard uninstall-hook [--dry-run]
@@ -60,60 +65,73 @@ Arguments:
   <target>            Path to a directory or single file to scan
 
 Options:
-  --json              Emit JSON output (for CI / piping to other tools)
+  --json              Emit JSON output
   --sarif             Emit SARIF 2.1.0 output (GitHub Code Scanning)
   --no-color          Disable ANSI color codes
   --min-severity      Filter findings below this level (default: INFO)
                       Values: CRITICAL HIGH MEDIUM LOW INFO
-  --exit-zero         Exit 0 even when findings exist (CI report mode)
-  --max-risk <n>      Exit 1 if risk score exceeds n [0-100] (e.g. --max-risk 40)
+  --exit-zero         Exit 0 even when findings exist
+  --max-risk <n>      Exit 1 if risk score exceeds n [0-100]
+  --quiet             Suppress all output; only exit code matters
+  --stats             Print category/severity breakdown (no individual findings)
+  --max-findings <n>  Stop after n findings and exit 1 (fast-fail for CI)
+  --exclude <seg>     Exclude files whose path contains this segment (repeatable)
+                      e.g. --exclude vendor --exclude generated
+  --severity-override Override a rule's severity: <id>:<SEV> (repeatable)
+                      e.g. --severity-override EX-008:CRITICAL
+  --save-baseline     Snapshot current findings to .skillsguard/baseline.json
+  --diff-baseline     Only report NEW findings vs saved baseline
+  --update-baseline   Merge new findings into existing baseline
+  --watch             Re-scan target on file changes; print only deltas
+  --diff [<base>]     Scan only files changed vs <base> ref (default HEAD)
+  --staged            With --diff: scan only staged files
   --server            Start local HTTP server to scan files via curl POST
-  --port <number>     Port to listen on for HTTP server (default: 3000)
+  --port <number>     Port for HTTP server (default: 3000)
   --rule <spec>       Add a custom regex rule. Repeatable. Two formats:
                         "PATTERN"               bare regex, severity HIGH
-                        "id:sev:cat:msg:PATTERN" fully specified rule
-  --diff [<base>]     Scan only files changed vs <base> ref (default HEAD).
-                      Use --diff --staged for pre-commit hooks (staged files only).
-  --staged            With --diff: scan only staged files (index vs HEAD)
+                        "id:sev:cat:msg:PATTERN" fully specified
+  --rules-only        Run ONLY the custom --rule patterns; skip built-ins
   --no-config         Skip auto-loading skillsguard.config.json
   --help              Show this help and exit
 
+Subcommands:
+  rules [ID]          List all rules, or show full detail for a single rule
+    --category CAT    Filter by category substring
+    --severity SEV    Filter by exact severity
+
+  tune <RULE-ID> --severity <SEV>
+                      Write a severity override for RULE-ID into the config file
+    --config <path>   Config file to write to (default: auto-discovered or ./skillsguard.config.json)
+
 Pre-commit hook options (used with install-hook):
   --hook-severity <LEVEL>   Minimum severity that blocks the commit (default: HIGH)
-  --hook-max-risk <n>       Block commit if risk score exceeds n [0-100]
+  --hook-max-risk <n>       Block commit if risk score exceeds n
   --hook-exit-zero          Install in report-only mode (never blocks commits)
   --hook-json               Hook emits JSON output
   --hook-sarif              Hook emits SARIF output
   --dry-run                 Print what would be done without writing files
 
-Config file: SkillsGuard auto-loads skillsguard.config.json walking up from
-  the target directory. CLI flags override config values. Use --no-config to
-  disable. See README for the full schema.
-
 Examples:
   skillsguard /path/to/skills
-  skillsguard ./SKILL.md --json
-  skillsguard ./SKILL.md --sarif > results.sarif
-  skillsguard ./SKILL.md --max-risk 40
-  skillsguard ./SKILL.md --rule "evil_pattern" --rule "another_pattern"
-  skillsguard ./SKILL.md --rule "MY-001:HIGH:custom:Bad thing found:bad_thing" --rules-only
-  skillsguard --diff                      # staged files
-  skillsguard --diff main                 # changed vs main
-  skillsguard --diff HEAD~1 --sarif > out.sarif
-  skillsguard install-hook
+  skillsguard ./SKILL.md --min-severity HIGH --stats
+  skillsguard ./SKILL.md --save-baseline
+  skillsguard ./SKILL.md --diff-baseline           # CI gate on new findings only
+  skillsguard ./SKILL.md --exclude vendor --exclude generated
+  skillsguard ./SKILL.md --max-findings 10         # fast-fail after 10 findings
+  skillsguard ./SKILL.md --severity-override EX-008:CRITICAL
+  skillsguard ./SKILL.md --watch
+  skillsguard rules
+  skillsguard rules PI-001
+  skillsguard rules --category exfiltration
+  skillsguard tune EX-008 --severity CRITICAL
   skillsguard install-hook --hook-severity CRITICAL --hook-max-risk 40
   skillsguard uninstall-hook
 `.trim());
 }
 
+
 /**
  * Parse a --rule spec string into a CustomRule.
- *
- * Supported formats:
- *   "PATTERN"                         — bare regex, defaults applied
- *   "id:sev:cat:msg:PATTERN"          — fully specified (5 colon-separated parts)
- *
- * The PATTERN segment itself may contain colons, so we only split on the first 4.
  */
 function parseRuleSpec(spec: string): CustomRule | null {
   const parts = spec.split(":");
@@ -136,7 +154,25 @@ function parseRuleSpec(spec: string): CustomRule | null {
   return { pattern: spec };
 }
 
-function parseArgs(argv: string[]): {
+/**
+ * Parse --severity-override id:SEV into a [id, Severity] pair.
+ */
+function parseSeverityOverride(spec: string): [string, Severity] | null {
+  const colon = spec.indexOf(":");
+  if (colon <= 0) {
+    console.error(`Error: --severity-override must be in the format "RULE-ID:SEVERITY", got: "${spec}"`);
+    return null;
+  }
+  const id  = spec.slice(0, colon).trim();
+  const sev = spec.slice(colon + 1).trim().toUpperCase();
+  if (!VALID_SEVERITIES.has(sev)) {
+    console.error(`Error: invalid severity "${sev}" in --severity-override. Must be one of: CRITICAL HIGH MEDIUM LOW INFO`);
+    return null;
+  }
+  return [id, sev as Severity];
+}
+
+interface ParsedArgs {
   target: string;
   json: boolean;
   sarif: boolean;
@@ -144,10 +180,21 @@ function parseArgs(argv: string[]): {
   minSeverity: Severity;
   exitZero: boolean;
   maxRisk: number | null;
+  quiet: boolean;
+  stats: boolean;
+  maxFindings: number;
+  excludePatterns: string[];
+  severityOverrides: Partial<Record<string, Severity>>;
+  saveBaseline: boolean;
+  diffBaseline: boolean;
+  updateBaseline: boolean;
+  watch: boolean;
   extraRules: CustomRule[];
   rulesOnly: boolean;
   noConfig: boolean;
-} | null {
+}
+
+function parseArgs(argv: string[]): ParsedArgs | null {
   const args = argv.slice(2);
 
   if (args.includes("--help") || args.includes("-h")) {
@@ -155,15 +202,35 @@ function parseArgs(argv: string[]): {
     process.exit(0);
   }
 
-  const json      = args.includes("--json");
-  const sarif     = args.includes("--sarif");
-  const noColor   = args.includes("--no-color") || !process.stdout.isTTY;
-  const exitZero  = args.includes("--exit-zero");
-  const rulesOnly = args.includes("--rules-only");
-  const noConfig  = args.includes("--no-config");
+  const json            = args.includes("--json");
+  const sarif           = args.includes("--sarif");
+  const noColor         = args.includes("--no-color") || !process.stdout.isTTY;
+  const exitZero        = args.includes("--exit-zero");
+  const rulesOnly       = args.includes("--rules-only");
+  const noConfig        = args.includes("--no-config");
+  const quiet           = args.includes("--quiet");
+  const stats           = args.includes("--stats");
+  const saveBaseline    = args.includes("--save-baseline");
+  const diffBaseline    = args.includes("--diff-baseline");
+  const updateBaseline  = args.includes("--update-baseline");
+  const watch           = args.includes("--watch");
 
   if (json && sarif) {
     console.error("Error: --json and --sarif are mutually exclusive");
+    return null;
+  }
+  if (quiet && (json || sarif || stats)) {
+    console.error("Error: --quiet is mutually exclusive with --json, --sarif, and --stats");
+    return null;
+  }
+  if (json && stats) {
+    console.error("Error: --stats is mutually exclusive with --json and --sarif");
+    return null;
+  }
+
+  const baselineFlags = [saveBaseline, diffBaseline, updateBaseline].filter(Boolean).length;
+  if (baselineFlags > 1) {
+    console.error("Error: --save-baseline, --diff-baseline, and --update-baseline are mutually exclusive");
     return null;
   }
 
@@ -189,6 +256,45 @@ function parseArgs(argv: string[]): {
     maxRisk = val;
   }
 
+  let maxFindings = 0;
+  const maxFIdx = args.indexOf("--max-findings");
+  if (maxFIdx !== -1) {
+    const val = Number(args[maxFIdx + 1]);
+    if (!Number.isInteger(val) || val < 1) {
+      console.error(`Error: --max-findings must be a positive integer`);
+      return null;
+    }
+    maxFindings = val;
+  }
+
+  const excludePatterns: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--exclude") {
+      const seg = args[i + 1];
+      if (!seg || seg.startsWith("--")) {
+        console.error(`Error: --exclude requires a path segment argument`);
+        return null;
+      }
+      excludePatterns.push(seg);
+      i++;
+    }
+  }
+
+  const severityOverrides: Partial<Record<string, Severity>> = {};
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--severity-override") {
+      const spec = args[i + 1];
+      if (!spec || spec.startsWith("--")) {
+        console.error(`Error: --severity-override requires an argument (e.g. EX-008:CRITICAL)`);
+        return null;
+      }
+      const parsed = parseSeverityOverride(spec);
+      if (!parsed) return null;
+      severityOverrides[parsed[0]] = parsed[1];
+      i++;
+    }
+  }
+
   const extraRules: CustomRule[] = [];
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--rule") {
@@ -209,7 +315,10 @@ function parseArgs(argv: string[]): {
     return null;
   }
 
-  const flagsWithValues = new Set(["--min-severity", "--port", "--rule", "--max-risk"]);
+  const flagsWithValues = new Set([
+    "--min-severity", "--port", "--rule", "--max-risk",
+    "--max-findings", "--exclude", "--severity-override",
+  ]);
   const positionals: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const a = args[i]!;
@@ -229,8 +338,85 @@ function parseArgs(argv: string[]): {
     return null;
   }
 
-  return { target: positionals[0]!, json, sarif, noColor, minSeverity, exitZero, maxRisk, extraRules, rulesOnly, noConfig };
+  return {
+    target: positionals[0]!,
+    json,
+    sarif,
+    noColor,
+    minSeverity,
+    exitZero,
+    maxRisk,
+    quiet,
+    stats,
+    maxFindings,
+    excludePatterns,
+    severityOverrides,
+    saveBaseline,
+    diffBaseline,
+    updateBaseline,
+    watch,
+    extraRules,
+    rulesOnly,
+    noConfig,
+  };
 }
+
+
+// ─── tune subcommand: write a severityOverride to the config file ─────────────
+
+import { readFile as fsReadFile, writeFile as fsWriteFile, stat as fsStat } from "node:fs/promises";
+import { join as pathJoin } from "node:path";
+
+async function runTune(args: string[]): Promise<void> {
+  // `skillsguard tune <RULE-ID> --severity <SEV> [--config <path>]`
+  const tuneIdx = args.indexOf("tune");
+  const ruleId  = args[tuneIdx + 1];
+  if (!ruleId || ruleId.startsWith("--")) {
+    console.error("Error: tune requires a rule ID, e.g.  skillsguard tune EX-008 --severity CRITICAL");
+    process.exit(2);
+  }
+
+  const sevIdx = args.indexOf("--severity");
+  if (sevIdx === -1) {
+    console.error("Error: tune requires --severity, e.g.  skillsguard tune EX-008 --severity CRITICAL");
+    process.exit(2);
+  }
+  const sev = args[sevIdx + 1]?.toUpperCase();
+  if (!sev || !VALID_SEVERITIES.has(sev)) {
+    console.error("Error: --severity must be one of: CRITICAL HIGH MEDIUM LOW INFO");
+    process.exit(2);
+  }
+
+  // Determine config file path
+  let configPath: string;
+  const cfgIdx = args.indexOf("--config");
+  if (cfgIdx !== -1 && args[cfgIdx + 1] && !args[cfgIdx + 1]!.startsWith("--")) {
+    configPath = args[cfgIdx + 1]!;
+  } else {
+    // Try to find existing config, else use cwd
+    const candidate = pathJoin(process.cwd(), "skillsguard.config.json");
+    configPath = candidate;
+  }
+
+  // Load existing config or start fresh
+  let config: Record<string, unknown> = {};
+  try {
+    await fsStat(configPath);
+    const text = await fsReadFile(configPath, "utf-8");
+    config = JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    // File doesn't exist — will create it
+  }
+
+  if (typeof config["severityOverrides"] !== "object" || config["severityOverrides"] === null) {
+    config["severityOverrides"] = {};
+  }
+  (config["severityOverrides"] as Record<string, string>)[ruleId] = sev;
+
+  await fsWriteFile(configPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
+  console.log(`✓ Set ${ruleId} → ${sev} in ${configPath}`);
+}
+
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
@@ -243,6 +429,36 @@ async function main(): Promise<void> {
   if (args.includes("setup") || args.includes("--setup")) {
     const dryRun = args.includes("--dry-run");
     setupMcp(dryRun);
+    return;
+  }
+
+  // ── rules subcommand ───────────────────────────────────────────────────────
+  if (args[0] === "rules") {
+    const noColor = args.includes("--no-color") || !process.stdout.isTTY;
+
+    const catIdx  = args.indexOf("--category");
+    const category = catIdx !== -1 ? args[catIdx + 1] : undefined;
+
+    const sevIdx  = args.indexOf("--severity");
+    const severity = sevIdx !== -1 ? args[sevIdx + 1] : undefined;
+
+    // Flag-value positions to skip when looking for the positional rule ID
+    const skipPositions = new Set<number>();
+    if (catIdx !== -1) { skipPositions.add(catIdx); skipPositions.add(catIdx + 1); }
+    if (sevIdx !== -1) { skipPositions.add(sevIdx); skipPositions.add(sevIdx + 1); }
+
+    const id = args
+      .slice(1)
+      .map((a, i) => ({ a, i: i + 1 })) // i is index in args (shifted by 1 for "rules")
+      .find(({ a, i }) => !a.startsWith("--") && !skipPositions.has(i))?.a;
+
+    exploreRules({ id, category, severity, noColor });
+    return;
+  }
+
+  // ── tune subcommand ────────────────────────────────────────────────────────
+  if (args[0] === "tune") {
+    await runTune(args);
     return;
   }
 
@@ -335,11 +551,7 @@ async function main(): Promise<void> {
     try {
       console.log("\nSkillsGuard — removing pre-commit hook");
       const outcome: UninstallOutcome = await uninstallHook({ dryRun });
-      if (outcome === "foreign-hook") {
-        // Hook exists but isn't ours — treat as a usage error so the caller
-        // knows they need to remove it manually before SkillsGuard can manage it.
-        process.exit(2);
-      }
+      if (outcome === "foreign-hook") process.exit(2);
       if (outcome === "not-found" && !dryRun) process.exit(1);
     } catch (err: unknown) {
       console.error(`Error: ${String(err)}`);
@@ -377,46 +589,79 @@ async function main(): Promise<void> {
     return;
   }
 
+
   // ── Full scan mode ─────────────────────────────────────────────────────────
   const opts = parseArgs(process.argv);
   if (!opts) {
-    // parseArgs already printed a specific error message; just exit.
     process.exit(2);
   }
 
-  let cfgMinSeverity: Severity   = opts.minSeverity;
-  let cfgExitZero: boolean        = opts.exitZero;
-  let cfgSarif: boolean           = opts.sarif;
-  let cfgNoColor: boolean         = opts.noColor;
-  let cfgMaxRisk: number | null   = opts.maxRisk;
-  let cfgIgnoreRules: string[]    = [];
-  let cfgExtraRules: CustomRule[] = opts.extraRules;
-  let cfgRulesOnly: boolean       = opts.rulesOnly;
+  // ── Merge config file (CLI flags win) ─────────────────────────────────────
+  let cfgMinSeverity: Severity                         = opts.minSeverity;
+  let cfgExitZero: boolean                             = opts.exitZero;
+  let cfgSarif: boolean                                = opts.sarif;
+  let cfgNoColor: boolean                              = opts.noColor;
+  let cfgMaxRisk: number | null                        = opts.maxRisk;
+  let cfgIgnoreRules: string[]                         = [];
+  let cfgExtraRules: CustomRule[]                      = opts.extraRules;
+  let cfgRulesOnly: boolean                            = opts.rulesOnly;
+  let cfgSeverityOverrides: Partial<Record<string, Severity>> = opts.severityOverrides;
+  let cfgExcludePatterns: string[]                     = opts.excludePatterns;
+  let cfgMaxFindings: number                           = opts.maxFindings;
 
   if (!opts.noConfig) {
     try {
       const fileConfig = await loadConfig(opts.target);
       if (fileConfig) {
-        if (fileConfig.minSeverity  && !process.argv.includes("--min-severity")) cfgMinSeverity = fileConfig.minSeverity;
-        if (fileConfig.exitZero     && !process.argv.includes("--exit-zero"))    cfgExitZero    = fileConfig.exitZero;
-        if (fileConfig.sarif        && !process.argv.includes("--sarif"))        cfgSarif       = fileConfig.sarif;
-        if (fileConfig.noColor      && !process.argv.includes("--no-color"))     cfgNoColor     = fileConfig.noColor;
-        if (fileConfig.maxRiskScore != null && !process.argv.includes("--max-risk")) cfgMaxRisk = fileConfig.maxRiskScore;
-        if (fileConfig.rulesOnly    && !process.argv.includes("--rules-only"))   cfgRulesOnly   = fileConfig.rulesOnly;
+        if (fileConfig.minSeverity  && !process.argv.includes("--min-severity"))    cfgMinSeverity = fileConfig.minSeverity;
+        if (fileConfig.exitZero     && !process.argv.includes("--exit-zero"))       cfgExitZero    = fileConfig.exitZero;
+        if (fileConfig.sarif        && !process.argv.includes("--sarif"))           cfgSarif       = fileConfig.sarif;
+        if (fileConfig.noColor      && !process.argv.includes("--no-color"))        cfgNoColor     = fileConfig.noColor;
+        if (fileConfig.maxRiskScore != null && !process.argv.includes("--max-risk")) cfgMaxRisk    = fileConfig.maxRiskScore;
+        if (fileConfig.rulesOnly    && !process.argv.includes("--rules-only"))      cfgRulesOnly   = fileConfig.rulesOnly;
+        if (fileConfig.maxFindings  && !process.argv.includes("--max-findings"))    cfgMaxFindings = fileConfig.maxFindings;
         if (fileConfig.ignoreRules) cfgIgnoreRules = fileConfig.ignoreRules;
         if (fileConfig.extraRules?.length) cfgExtraRules = [...fileConfig.extraRules, ...opts.extraRules];
+        // Merge: CLI overrides win over config-file overrides for individual rules
+        if (fileConfig.severityOverrides) {
+          cfgSeverityOverrides = { ...fileConfig.severityOverrides, ...opts.severityOverrides };
+        }
+        if (fileConfig.excludePatterns?.length) {
+          cfgExcludePatterns = [...new Set([...fileConfig.excludePatterns, ...opts.excludePatterns])];
+        }
       }
     } catch (err: unknown) {
       console.error(`Warning: ${String(err)}`);
     }
   }
 
+  // ── Watch mode ─────────────────────────────────────────────────────────────
+  if (opts.watch) {
+    startWatch({
+      target: opts.target,
+      scanOptions: {
+        extraRules:        cfgExtraRules.length > 0        ? cfgExtraRules        : undefined,
+        rulesOnly:         cfgRulesOnly,
+        ignoreRules:       cfgIgnoreRules.length > 0       ? cfgIgnoreRules       : undefined,
+        severityOverrides: Object.keys(cfgSeverityOverrides).length > 0 ? cfgSeverityOverrides : undefined,
+        excludePatterns:   cfgExcludePatterns.length > 0   ? cfgExcludePatterns   : undefined,
+      },
+      minSeverity: cfgMinSeverity,
+      noColor: cfgNoColor,
+    });
+    return; // startWatch keeps the process alive
+  }
+
+  // ── Run scan ───────────────────────────────────────────────────────────────
   let result: ScanResult;
   try {
     result = await scan(opts.target, {
-      extraRules:   cfgExtraRules.length > 0  ? cfgExtraRules   : undefined,
-      rulesOnly:    cfgRulesOnly,
-      ignoreRules:  cfgIgnoreRules.length > 0 ? cfgIgnoreRules  : undefined,
+      extraRules:        cfgExtraRules.length > 0        ? cfgExtraRules        : undefined,
+      rulesOnly:         cfgRulesOnly,
+      ignoreRules:       cfgIgnoreRules.length > 0       ? cfgIgnoreRules       : undefined,
+      severityOverrides: Object.keys(cfgSeverityOverrides).length > 0 ? cfgSeverityOverrides : undefined,
+      excludePatterns:   cfgExcludePatterns.length > 0   ? cfgExcludePatterns   : undefined,
+      maxFindings:       cfgMaxFindings > 0              ? cfgMaxFindings        : undefined,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -424,28 +669,74 @@ async function main(): Promise<void> {
     process.exit(2);
   }
 
+  // ── Severity filter ────────────────────────────────────────────────────────
   const minRank = SEVERITY_RANK[cfgMinSeverity];
   const filteredFindings = result.findings.filter((f) => SEVERITY_RANK[f.severity] >= minRank);
   result = {
     ...result,
     findings: filteredFindings,
-    // Recompute risk score using only the findings that survive the severity filter
-    // so that --min-severity HIGH doesn't show an inflated score from LOW/MEDIUM findings.
     riskScore: computeRiskScore(filteredFindings),
   };
 
-  if (cfgSarif) {
-    reportSarif(result);
-  } else if (opts.json) {
-    reportJson(result);
-  } else {
-    reportHuman(result, cfgNoColor);
+  // ── Baseline operations ────────────────────────────────────────────────────
+  if (opts.saveBaseline) {
+    const savedPath = await saveBaseline(opts.target, result.findings);
+    if (!opts.quiet) {
+      const c = cfgNoColor ? (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "") : (s: string) => s;
+      process.stdout.write(c(`\x1b[32m✓ Baseline saved: ${savedPath} (${result.findings.length} finding(s))\x1b[0m\n`));
+    }
+    process.exit(0);
   }
 
+  if (opts.updateBaseline) {
+    const savedPath = await updateBaseline(opts.target, result.findings);
+    if (!opts.quiet) {
+      const c = cfgNoColor ? (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "") : (s: string) => s;
+      process.stdout.write(c(`\x1b[32m✓ Baseline updated: ${savedPath}\x1b[0m\n`));
+    }
+    process.exit(0);
+  }
+
+  if (opts.diffBaseline) {
+    const baseline = await loadBaseline(opts.target);
+    const diff = diffBaseline(baseline, result.findings);
+
+    if (!opts.quiet) {
+      if (cfgSarif) {
+        // Diff as SARIF — only emit the new findings
+        reportSarif({ ...result, findings: diff.newFindings });
+      } else if (opts.json) {
+        process.stdout.write(JSON.stringify({ ...diff, target: result.target, filesScanned: result.filesScanned }, null, 2) + "\n");
+      } else {
+        process.stdout.write(`\nSkillsGuard — diff vs baseline  ${result.filesScanned} file(s)\n\n`);
+        reportBaselineDiff(diff, cfgNoColor);
+      }
+    }
+
+    if (!cfgExitZero && diff.newFindings.length > 0) process.exit(1);
+    return;
+  }
+
+  // ── Output ─────────────────────────────────────────────────────────────────
+  if (!opts.quiet) {
+    if (cfgSarif) {
+      reportSarif(result);
+    } else if (opts.json) {
+      reportJson(result);
+    } else if (opts.stats) {
+      reportStats(result, cfgNoColor);
+    } else {
+      reportHuman(result, cfgNoColor);
+    }
+  }
+
+  // ── Exit code ──────────────────────────────────────────────────────────────
   if (!cfgExitZero) {
     if (result.findings.length > 0) process.exit(1);
     if (cfgMaxRisk !== null && result.riskScore.score > cfgMaxRisk) {
-      console.error(`Risk score ${result.riskScore.score} exceeds --max-risk threshold ${cfgMaxRisk}`);
+      if (!opts.quiet) {
+        console.error(`Risk score ${result.riskScore.score} exceeds --max-risk threshold ${cfgMaxRisk}`);
+      }
       process.exit(1);
     }
   }
