@@ -167,13 +167,18 @@ async function scanFile(filePath: string, rootDir: string): Promise<readonly Fin
 // ─── Deduplication ───────────────────────────────────────────────────────────
 
 function dedup(findings: readonly Finding[]): readonly Finding[] {
-  const seen = new Set<string>();
-  return findings.filter((f) => {
-    const key = `${f.ruleId}:${f.file}:${f.line}:${f.decodedFrom ?? ""}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  // Key on ruleId:file:line only — when both a raw finding and a decoded-blob
+  // finding exist for the same location, keep the one with decodedFrom because
+  // it carries more forensic evidence (encoding type + raw blob excerpt).
+  const seen = new Map<string, Finding>();
+  for (const f of findings) {
+    const key = `${f.ruleId}:${f.file}:${f.line}`;
+    const existing = seen.get(key);
+    if (!existing || (!existing.decodedFrom && f.decodedFrom)) {
+      seen.set(key, f);
+    }
+  }
+  return [...seen.values()];
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
