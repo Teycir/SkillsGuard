@@ -31,7 +31,7 @@ _Scan the QR code or copy the wallet address above._
 
 <div align="center">
 
-<img src="public/skillsguard_ascii.svg" alt="SkillsGuard ASCII animation" width="720" />
+<img src="public/skillsguard_ascii.svg" alt="SkillsGuard ASCII animation" width="820" />
 
 **Static security scanner for AI agent skill packages.**
 Detects malicious SKILL.md files and bundled scripts before they run.
@@ -39,6 +39,66 @@ Detects malicious SKILL.md files and bundled scripts before they run.
 ### _"Audit skills. Trust nothing. Ship safely."_
 
 </div>
+
+---
+
+## ⚡ Install & Use in 60 seconds
+
+```bash
+# 1. Install globally
+npm install -g skillsguard
+
+# 2. Scan any skill directory or file
+skillsguard /path/to/skill
+
+# 3. (Optional) Register as an MCP server so Claude audits skills automatically
+skillsguard setup
+```
+
+That's it. SkillsGuard prints color-coded findings to the terminal (or `--json` for CI).  
+Exit code `0` = clean · `1` = findings · `2` = usage error.
+
+---
+
+## How It Works
+
+```mermaid
+flowchart TD
+    A([fa:fa-folder Skill directory / file]) --> B[File discovery\nscanner.ts]
+
+    B --> C{For each file}
+
+    C --> D[Raw text scan\nApply 65+ regex rules]
+    C --> E[decode.ts\nExtract encoded blobs]
+
+    E --> E1[base64 blobs]
+    E --> E2[hex blobs]
+    E --> E3[URL-encoded blobs]
+    E1 & E2 & E3 --> E4[Recursive depth-2\nunwrap]
+    E4 --> F[Scan decoded content\nwith same rule set]
+
+    D --> G{Findings?}
+    F --> G
+
+    G -->|yes| H[Deduplicate\nper rule/file/line]
+    G -->|no| I([✅ Clean — exit 0])
+
+    H --> J{Output mode}
+
+    J -->|CLI| K[ANSI colored report\nreport.ts]
+    J -->|--json| L[JSON output\nfor CI pipelines]
+    J -->|MCP| M[scan_skill tool\nJSON-RPC response]
+
+    K & L & M --> N([❌ Exit 1 — findings])
+
+    style A fill:#0d1117,stroke:#00ff88,color:#c3f5dc
+    style I fill:#0d1117,stroke:#00ff88,color:#00ff88
+    style N fill:#0d1117,stroke:#ff4444,color:#ff8888
+    style E4 fill:#0d1117,stroke:#f0a500,color:#f0c060
+    style H fill:#0d1117,stroke:#00ff88,color:#c3f5dc
+```
+
+> **Key insight:** SkillsGuard decodes obfuscated payloads *before* scanning, so a base64-wrapped reverse shell can't slip through. Every finding is deduplicated — each rule fires at most once per file per line.
 
 ---
 
