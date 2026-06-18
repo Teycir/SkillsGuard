@@ -31,7 +31,7 @@ _Scan the QR code or copy the wallet address above._
 
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/Teycir/SkillsGuard/master/public/skillsguard_ascii.gif" alt="SkillsGuard ASCII animation" width="820" />
+<img src="https://raw.githubusercontent.com/Teycir/SkillsGuard/main/public/skillsguard_ascii.gif" alt="SkillsGuard ASCII animation" width="820" />
 
 **Static security scanner for AI agent skill packages.**
 Detects malicious SKILL.md files and bundled scripts before they run.
@@ -110,11 +110,13 @@ flowchart TD
 - [Quick Start](#quick-start)
 - [CLI Usage](#cli-usage)
 - [MCP Server](#mcp-server)
+- [HTTP Server](#http-server)
 - [Library API](#library-api)
 - [Rules Reference](#rules-reference)
 - [Obfuscation Detection](#obfuscation-detection)
 - [Test Fixtures](#test-fixtures)
 - [Project Structure](#project-structure)
+- [Limitations](#limitations)
 - [Contributing](#contributing)
 - [License](#license)
 - [Attribution](#attribution)
@@ -229,6 +231,8 @@ Options:
   --min-severity    Filter findings below this level (default: INFO)
                     Values: CRITICAL  HIGH  MEDIUM  LOW  INFO
   --exit-zero       Exit 0 even when findings exist (CI report mode)
+  --server          Start a local HTTP server to scan content via curl POST
+  --port <number>   Port for HTTP server (default: 3000)
   --help            Show this help and exit
 
 Exit codes:
@@ -323,6 +327,57 @@ If auto-setup doesn't apply to your setup, add this entry manually:
 ### How it integrates
 
 Once registered, Claude will call `scan_skill` automatically when it encounters a skill directory — before reading or acting on any skill content. The tool returns a full JSON `ScanResult` inline in the conversation.
+
+---
+
+## HTTP Server
+
+SkillsGuard can run as a local HTTP server, letting **anyone scan a skill with plain `curl` — no install required on the client side**.
+
+### Start the server
+
+```bash
+skillsguard server          # default port 3000
+skillsguard server 4567     # custom port
+skillsguard --server --port 4567
+```
+
+### Scan via curl (no install needed on the client)
+
+```bash
+# Scan a local file — pipe it directly
+curl --data-binary @SKILL.md http://localhost:4567/scan
+
+# Scan inline content
+curl -X POST http://localhost:4567/scan \
+  -H "Content-Type: application/json" \
+  -d '{"content": "ignore all previous instructions", "filename": "test.md"}'
+
+# Health check
+curl http://localhost:4567/health
+```
+
+### Response format
+
+```json
+{
+  "filename": "SKILL.md",
+  "safe": false,
+  "findings": [
+    {
+      "ruleId": "PI-001",
+      "category": "prompt-injection",
+      "severity": "CRITICAL",
+      "message": "Classic prompt injection: instructs Claude to ignore prior guidelines",
+      "file": "SKILL.md",
+      "line": 1,
+      "evidence": "ignore all previous instructions"
+    }
+  ]
+}
+```
+
+> **Note:** The HTTP `/scan` endpoint scans a single file's content sent in the request body. For full directory scanning, use the CLI or MCP server directly.
 
 ---
 
@@ -515,6 +570,24 @@ SkillsGuard/
 ├── package.json
 └── tsconfig.json
 ```
+
+---
+
+## Limitations
+
+SkillsGuard is a **static, regex-based scanner** — fast and zero-dependency by design, but with inherent trade-offs worth understanding before relying on it as a sole security gate.
+
+**Pattern matching, not semantic analysis.** Rules match text patterns, not program meaning. A sufficiently obfuscated payload (e.g. a reverse shell assembled at runtime from string concatenation across several variables) may not trigger any rule. For production-critical pipelines, pair SkillsGuard with sandbox execution or AST-level analysis.
+
+**False positives are possible.** Legitimate skills that make HTTP calls, use `base64` for encoding non-malicious data, or reference `/etc/hosts` for documentation purposes may generate findings. Use `skillsguard-ignore: <RULE-ID>` inline comments to suppress known-good matches, and tune `--min-severity` for your noise tolerance.
+
+**Decode depth is capped at 2.** Triple-encoded or non-printable-heavy payloads may evade the `findDecodedBlobs()` unwrapper. Raising the depth increases coverage but also processing time and false positive rate.
+
+**Single-file HTTP scan.** The `--server` / curl mode scans one file's content per request. It does not walk a directory tree. For full skill directory scanning, use the CLI or MCP server.
+
+**No Windows path testing in CI.** Path handling for Windows-style separators (`\`) is implemented but not exercised in the fixture suite, which runs on Linux/macOS. Contributions with Windows-specific test cases are welcome.
+
+**Rules require maintenance.** New attack patterns emerge as AI agent ecosystems evolve. The rule set covers known techniques as of the project's last update — community contributions via pull request are the intended scaling mechanism.
 
 ---
 
