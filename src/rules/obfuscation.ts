@@ -19,7 +19,7 @@ export const OBFUSCATION_RULES: readonly Rule[] = [
     id: "OB-003",
     category: "obfuscation",
     severity: "MEDIUM",
-    pattern: /\$\{\s*[a-zA-Z_][a-zA-Z0-9_]*\s*:\s*-\s*['"]\s*\|\s*(bash|sh|python|node)/i,
+    pattern: /\$\{\s*[a-zA-Z_][a-zA-Z0-9_]*\s*:\s*-\s*['"][^'"]*['"]\s*\}\s*\|\s*(bash|sh|python|node)/i,
     message: "Obfuscation: shell parameter expansion used to hide pipe-to-shell pattern",
   },
   {

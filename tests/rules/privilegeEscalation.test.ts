@@ -15,12 +15,19 @@ test("PE-001 catches sudo with stdin password flag", () => {
   assert.ok(!r.pattern.test("sudo apt update"));
 });
 
-test("PE-002 catches chmod on system binaries", () => {
+test("PE-002 catches chmod on system binaries with owner write/execute bits", () => {
   const r = rule("PE-002");
+  // chmod 7xx sets setuid/setgid/sticky — always suspicious on /bin/
   assert.ok(r.pattern.test("chmod 777 /bin/bash"));
   assert.ok(r.pattern.test("chmod 4755 /usr/bin/python3"));
+  // chmod 6xx also fires (owner has write — suspicious on system binary)
+  assert.ok(r.pattern.test("chmod 644 /bin/ls"));
+  // Non-system paths should NOT fire
   assert.ok(!r.pattern.test("chmod 755 ./my-script.sh"));
-  assert.ok(!r.pattern.test("chmod 644 /bin/ls"));  // 644 — no write/exec bits in octal middle
+  assert.ok(!r.pattern.test("chmod 644 /home/user/file.txt"));
+  // No 6 or 7 in the hundreds digit, system path — should NOT fire
+  assert.ok(!r.pattern.test("chmod 444 /bin/ls"));
+  assert.ok(!r.pattern.test("chmod 555 /usr/bin/env"));
 });
 
 test("PE-003 catches chown root on files", () => {

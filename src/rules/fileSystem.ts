@@ -19,7 +19,7 @@ export const FILE_SYSTEM_RULES: readonly Rule[] = [
     id: "FS-003",
     category: "filesystem-abuse",
     severity: "MEDIUM",
-    pattern: /\bwrite\b[^#\n]*(\/etc\/hosts|\/etc\/resolv\.conf|\/etc\/passwd)/i,
+    pattern: /\bwrite\w*\s*\([^#\n]*(\/etc\/hosts|\/etc\/resolv\.conf|\/etc\/passwd)/i,
     message: "Filesystem abuse: writing to sensitive system config files",
   },
 ];
