@@ -7,7 +7,7 @@
 
 import { readdir, readFile, stat, realpath } from "node:fs/promises";
 import { join, relative, extname } from "node:path";
-import type { Finding, ScanResult } from "./types.js";
+import type { Finding, ScanResult, ScanOptions, CustomRule, Rule } from "./types.js";
 import { RULES } from "./rules.js";
 import { findDecodedBlobs } from "./decode.js";
 import { shouldIgnoreLine } from "./lib/ignore.js";
@@ -30,6 +30,42 @@ const SKIP_DIRS = new Set<string>([
 ]);
 
 const MAX_FILE_SIZE = 512 * 1024; // 512 KB — skip suspiciously large files
+
+// ─── Custom rule resolution ──────────────────────────────────────────────────
+
+let _customCounter = 0;
+
+/**
+ * Convert a {@link CustomRule} (caller-supplied, partial) into a full {@link Rule}.
+ * Missing fields receive safe defaults so callers only need to supply a pattern.
+ */
+export function resolveCustomRule(raw: CustomRule, index?: number): Rule {
+  const counter = index ?? ++_customCounter;
+  const id = raw.id ?? `CUSTOM-${String(counter).padStart(3, "0")}`;
+  const flags = raw.flags ?? "gi";
+  let compiledPattern: RegExp;
+  try {
+    compiledPattern = new RegExp(raw.pattern, flags);
+  } catch (err) {
+    throw new Error(`Invalid regex for rule "${id}": ${raw.pattern} — ${String(err)}`);
+  }
+  return {
+    id,
+    category: raw.category ?? "custom",
+    severity: raw.severity ?? "HIGH",
+    pattern: compiledPattern,
+    message: raw.message ?? `Custom rule matched: ${raw.pattern}`,
+  };
+}
+
+/**
+ * Build the effective rule list for a scan, merging built-ins + extras.
+ */
+function resolveRules(options?: ScanOptions): readonly Rule[] {
+  const extras = (options?.extraRules ?? []).map((r, i) => resolveCustomRule(r, i + 1));
+  if (options?.rulesOnly) return extras;
+  return [...RULES, ...extras];
+}
 
 // ─── File discovery ──────────────────────────────────────────────────────────
 
@@ -93,11 +129,13 @@ export function scanText(
   text: string,
   filePath: string,
   decodedFrom?: string,
+  options?: ScanOptions,
 ): readonly Finding[] {
   const findings: Finding[] = [];
   const lines = text.split("\n");
+  const rules = resolveRules(options);
 
-  for (const rule of RULES) {
+  for (const rule of rules) {
     const regex = rule.pattern.flags.includes("g")
       ? new RegExp(rule.pattern.source, rule.pattern.flags)
       : rule.pattern;
@@ -131,7 +169,7 @@ export function scanText(
   return findings;
 }
 
-async function scanFile(filePath: string, rootDir: string): Promise<readonly Finding[]> {
+async function scanFile(filePath: string, rootDir: string, options?: ScanOptions): Promise<readonly Finding[]> {
   const relPath = relative(rootDir, filePath);
   let content: string;
   try {
@@ -153,11 +191,11 @@ async function scanFile(filePath: string, rootDir: string): Promise<readonly Fin
   }
 
   const findings: Finding[] = [];
-  findings.push(...scanText(content, relPath));
+  findings.push(...scanText(content, relPath, undefined, options));
 
   const blobs = findDecodedBlobs(content);
   for (const blob of blobs) {
-    const blobFindings = scanText(blob.decoded, relPath, `${blob.encoding}:${blob.raw.slice(0, 40)}`);
+    const blobFindings = scanText(blob.decoded, relPath, `${blob.encoding}:${blob.raw.slice(0, 40)}`, options);
     findings.push(...blobFindings);
   }
 
@@ -183,7 +221,7 @@ function dedup(findings: readonly Finding[]): readonly Finding[] {
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
-export async function scan(target: string): Promise<ScanResult> {
+export async function scan(target: string, options?: ScanOptions): Promise<ScanResult> {
   const start = Date.now();
 
   let rootDir: string;
@@ -196,7 +234,7 @@ export async function scan(target: string): Promise<ScanResult> {
   }
 
   const files = await collectFiles(target);
-  const scanResults = await runConcurrent(files, 16, (file) => scanFile(file, rootDir));
+  const scanResults = await runConcurrent(files, 16, (file) => scanFile(file, rootDir, options));
   
   const allFindings: Finding[] = [];
   for (const findings of scanResults) {

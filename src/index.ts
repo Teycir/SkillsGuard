@@ -4,10 +4,11 @@
  */
 
 export { scan } from "./scanner.js";
+export { scanText, resolveCustomRule } from "./scanner.js";
 export { RULES } from "./rules.js";
 export { findDecodedBlobs } from "./decode.js";
 export { reportHuman, reportJson } from "./report.js";
-export type { Rule, Finding, ScanResult, Severity } from "./types.js";
+export type { Rule, Finding, ScanResult, Severity, CustomRule, ScanOptions } from "./types.js";
 export { setupMcp } from "./setup.js";
 export { isSafePath } from "./lib/path.js";
 export { shouldIgnoreLine } from "./lib/ignore.js";
