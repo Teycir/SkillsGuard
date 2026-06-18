@@ -20,9 +20,9 @@ export function isSafePath(targetPath: string): boolean {
   }
 
   const sensitivePatterns = [
-    /\/\.(ssh|gnupg|aws|config|gemini|npm|cache|local)\b/,
-    /\/\.bash_history$/,
-    /\/\.(bashrc|zshrc|profile|bash_profile)$/,
+    /[\/\\]\.(ssh|gnupg|aws|config|gemini|npm|cache|local)\b/,
+    /[\/\\]\.bash_history$/,
+    /[\/\\]\.(bashrc|zshrc|profile|bash_profile)$/,
     /\b(passwd|shadow|git-credentials|npmrc|pypirc|netrc)\b/,
   ];
   if (sensitivePatterns.some((pat) => pat.test(resolved))) {

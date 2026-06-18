@@ -31,8 +31,12 @@ test("isSafePath permits authorized and rejects dangerous paths", () => {
   // Sensitive locations
   assert.strictEqual(isSafePath(resolve(home, ".ssh")), false);
   assert.strictEqual(isSafePath(resolve(home, ".ssh/id_rsa")), false);
+  assert.strictEqual(isSafePath(resolve(home, ".ssh\\id_rsa")), false);
+  assert.strictEqual(isSafePath(resolve(home, "some_dir\\.ssh\\id_rsa")), false);
   assert.strictEqual(isSafePath(resolve(home, ".bashrc")), false);
+  assert.strictEqual(isSafePath(resolve(home, "some_dir\\.bash_history")), false);
   assert.strictEqual(isSafePath(resolve(home, "some_dir/passwd")), false);
+  assert.strictEqual(isSafePath(resolve(home, "some_dir\\passwd")), false);
 });
 
 test("shouldIgnoreLine behaves correctly for inline comments", () => {

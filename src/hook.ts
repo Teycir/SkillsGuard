@@ -120,9 +120,10 @@ function resolveRunnerCommand(): { command: string; args: string[] } {
   const resolved = resolve(argv1);
 
   if (resolved.endsWith(`/dist/cli.js`) || resolved.endsWith(`/skillsguard`)) {
-    // Shell-quote the absolute path so spaces in directory names don't break
-    // the generated hook script (single-quotes; no single-quotes in POSIX paths).
-    const quoted = `'${resolved}'`;
+    // Shell-quote the absolute path so spaces or single quotes in directory
+    // names don't break the generated hook script.
+    const escaped = resolved.replace(/'/g, "'\\''");
+    const quoted = `'${escaped}'`;
     return { command: "node", args: [quoted] };
   }
 

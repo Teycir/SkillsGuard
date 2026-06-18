@@ -46,7 +46,7 @@ export function setupMcp(dryRun = false): void {
       try {
         const parentDir = join(configPath, "..");
         if (!dryRun && !existsSync(parentDir)) {
-          mkdirSync(parentDir, { recursive: true });
+          mkdirSync(parentDir, { recursive: true, mode: 0o700 });
         }
 
         let configData: McpConfig = {};
@@ -83,7 +83,7 @@ export function setupMcp(dryRun = false): void {
             copyFileSync(configPath, backupPath);
             console.log(`Created configuration backup at: ${backupPath}`);
           }
-          writeFileSync(configPath, jsonOutput, "utf-8");
+          writeFileSync(configPath, jsonOutput, { encoding: "utf-8", mode: 0o600 });
           console.log(`Registered MCP server configuration at: ${configPath}`);
         }
         configuredCount++;
