@@ -31,7 +31,7 @@ _Scan the QR code or copy the wallet address above._
 
 <div align="center">
 
-<img src="public/skillsguard_ascii.svg" alt="SkillsGuard ASCII animation" width="820" />
+<img src="https://raw.githubusercontent.com/Teycir/SkillsGuard/master/public/skillsguard_ascii.svg" alt="SkillsGuard ASCII animation" width="820" />
 
 **Static security scanner for AI agent skill packages.**
 Detects malicious SKILL.md files and bundled scripts before they run.
