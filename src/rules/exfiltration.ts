@@ -53,7 +53,7 @@ export const EXFILTRATION_RULES: readonly Rule[] = [
   {
     id: "EX-008",
     category: "exfiltration",
-    severity: "HIGH",
+    severity: "MEDIUM",
     pattern: /\b(http|https)\.request\s*\(|\bnet\.(createConnection|connect)\s*\(|\btls\.connect\s*\(/i,
     message: "Exfiltration: low-level Node.js network/socket communication path",
   },

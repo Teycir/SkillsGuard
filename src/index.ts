@@ -8,3 +8,4 @@ export { RULES } from "./rules.js";
 export { findDecodedBlobs } from "./decode.js";
 export { reportHuman, reportJson } from "./report.js";
 export type { Rule, Finding, ScanResult, Severity } from "./types.js";
+export { setupMcp } from "./setup.js";

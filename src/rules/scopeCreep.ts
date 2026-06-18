@@ -19,7 +19,7 @@ export const SCOPE_CREEP_RULES: readonly Rule[] = [
     id: "SC-CR-003",
     category: "scope-creep",
     severity: "HIGH",
-    pattern: /(?:\/|\\|['"]|\s|^)\.(ssh|aws|kube|gitconfig|bashrc|zshrc|profile|history|gnupg|docker)\b/i,
+    pattern: /(?:\/|\\|['"`\(,\s]|^)\.(ssh|aws|kube|gitconfig|bashrc|zshrc|profile|history|gnupg|docker)\b/i,
     message: "Scope creep: accessing user ssh/cloud credentials or shell history outside project bounds",
   },
 ];

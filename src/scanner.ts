@@ -24,6 +24,7 @@ const SKIP_DIRS = new Set([
   "node_modules", ".git", ".trunk", "dist", "build",
   "__pycache__", ".mypy_cache", ".pytest_cache", "coverage",
   ".next", ".open-next", ".wrangler", "target", ".cargo",
+  ".venv", "venv", "env", ".tox",
 ]);
 
 const MAX_FILE_SIZE = 512 * 1024; // 512 KB — skip suspiciously large files
@@ -88,9 +89,10 @@ function scanText(
   const lines = text.split("\n");
 
   for (const rule of RULES) {
+    const regex = new RegExp(rule.pattern.source, rule.pattern.flags);
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
       const line = lines[lineIdx];
-      if (rule.pattern.test(line)) {
+      if (line !== undefined && regex.test(line)) {
         findings.push({
           ruleId: rule.id,
           category: rule.category,
@@ -101,8 +103,9 @@ function scanText(
           evidence: line.trim().slice(0, 200),
           decodedFrom,
         });
-        // Reset stateful regex after match
-        rule.pattern.lastIndex = 0;
+        if (regex.flags.includes("g")) {
+          regex.lastIndex = 0;
+        }
       }
     }
   }
@@ -111,16 +114,26 @@ function scanText(
 }
 
 async function scanFile(filePath: string, rootDir: string): Promise<Finding[]> {
+  const relPath = relative(rootDir, filePath);
   let content: string;
   try {
     const s = await stat(filePath);
-    if (s.size > MAX_FILE_SIZE) return [];
+    if (s.size > MAX_FILE_SIZE) {
+      return [{
+        ruleId: "SG-SKIP-001",
+        category: "scanner",
+        severity: "INFO",
+        message: `File skipped — exceeds 512 KB size limit (${(s.size / 1024).toFixed(1)} KB)`,
+        file: relPath,
+        line: 1,
+        evidence: `File size: ${s.size} bytes`,
+      }];
+    }
     content = await readFile(filePath, "utf-8");
   } catch {
     return [];
   }
 
-  const relPath = relative(rootDir, filePath);
   const findings: Finding[] = [];
 
   // 1. Scan raw content

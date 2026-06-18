@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { env, argv } from "node:process";
 
@@ -15,8 +15,10 @@ interface McpConfig {
 
 /**
  * Automatically registers SkillsGuard as an MCP server in the user's Claude configurations.
+ * 
+ * @param dryRun - If true, displays changes without writing them.
  */
-export function setupMcp(): void {
+export function setupMcp(dryRun = false): void {
   const home = env.HOME ?? env.USERPROFILE ?? "";
   if (!home) {
     console.error("Error: Could not locate home directory.");
@@ -43,7 +45,7 @@ export function setupMcp(): void {
     if (existsSync(configPath) || isClaudeCliPath) {
       try {
         const parentDir = join(configPath, "..");
-        if (!existsSync(parentDir)) {
+        if (!dryRun && !existsSync(parentDir)) {
           mkdirSync(parentDir, { recursive: true });
         }
 
@@ -68,8 +70,21 @@ export function setupMcp(): void {
           autoApprove: [],
         };
 
-        writeFileSync(configPath, JSON.stringify(configData, null, 2), "utf-8");
-        console.log(`Registered MCP server configuration at: ${configPath}`);
+        const jsonOutput = JSON.stringify(configData, null, 2);
+
+        if (dryRun) {
+          console.log(`[Dry Run] Would write to: ${configPath}`);
+          console.log(`[Dry Run] Content payload:\n${jsonOutput}\n`);
+        } else {
+          // Backup existing config if it exists
+          if (existsSync(configPath)) {
+            const backupPath = `${configPath}.bak`;
+            copyFileSync(configPath, backupPath);
+            console.log(`Created configuration backup at: ${backupPath}`);
+          }
+          writeFileSync(configPath, jsonOutput, "utf-8");
+          console.log(`Registered MCP server configuration at: ${configPath}`);
+        }
         configuredCount++;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -79,8 +94,12 @@ export function setupMcp(): void {
   }
 
   if (configuredCount > 0) {
-    console.log(`\nSuccessfully registered SkillsGuard in ${configuredCount} configuration(s).`);
-    console.log("AI agents will now automatically call 'scan_skill' tool when encountering skill files.");
+    if (dryRun) {
+      console.log(`\n[Dry Run] Simulated registering SkillsGuard in ${configuredCount} configuration(s).`);
+    } else {
+      console.log(`\nSuccessfully registered SkillsGuard in ${configuredCount} configuration(s).`);
+      console.log("AI agents will now automatically call 'scan_skill' tool when encountering skill files.");
+    }
   } else {
     console.warn("\nWarning: Could not configure MCP. No config directories detected.");
   }

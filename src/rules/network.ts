@@ -5,7 +5,7 @@ export const NETWORK_RULES: readonly Rule[] = [
     id: "NW-001",
     category: "network",
     severity: "HIGH",
-    pattern: /\b(curl|wget)\b[^#\n]*(--silent|-s)\s+https?:\/\/(?!.*\.anthropic\.com|.*\.github\.com|.*\.npmjs\.com|.*\.pypi\.org)[^#\n]*\|\s*(bash|sh|python|node)/i,
+    pattern: /\b(curl|wget)\b[^#\n]*(--silent|-s)\s+https?:\/\/(?!.*\.anthropic\.com|.*\.github\.com|.*\.githubusercontent\.com|.*\.npmjs\.com|.*\.pypi\.org)[^#\n]*\|\s*(bash|sh|python|node)/i,
     message: "Network: silently fetching a script from an external host and piping to shell",
   },
   {

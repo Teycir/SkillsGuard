@@ -19,6 +19,11 @@ function testMcpServer() {
     const child = spawn("node", ["dist/cli.js", "--mcp"]);
     let output = "";
 
+    const timeoutId = setTimeout(() => {
+      child.kill();
+      reject(new Error("MCP server test timed out after 10 seconds"));
+    }, 10000);
+
     child.stdout.on("data", (data) => {
       output += data.toString();
       let lineEnd = output.indexOf("\n");
@@ -38,15 +43,18 @@ function testMcpServer() {
               }) + "\n");
             } else if (resp["result"]?.["tools"]?.[0]?.["name"] === "scan_skill") {
               console.log("PASS (MCP tools/list responded correctly)");
+              clearTimeout(timeoutId);
               child.kill();
               resolve();
               return;
             } else {
+              clearTimeout(timeoutId);
               child.kill();
               reject(new Error(`Unexpected MCP JSON-RPC response: ${line}`));
               return;
             }
           } catch (err) {
+            clearTimeout(timeoutId);
             child.kill();
             reject(new Error(`Failed to parse JSON-RPC response: ${err.message}`));
             return;
@@ -57,6 +65,7 @@ function testMcpServer() {
     });
 
     child.on("error", (err) => {
+      clearTimeout(timeoutId);
       reject(err);
     });
 
@@ -82,7 +91,7 @@ async function runAllTests() {
   for (const tc of CASES) {
     process.stdout.write(`Scanning ${tc.path}... `);
     try {
-      execSync(`node dist/cli.js ${tc.path}`, { stdio: "ignore" });
+      execSync(`node dist/cli.js ${tc.path}`, { stdio: "ignore", timeout: 10000 });
       if (tc.expectedExitCode === 0) {
         console.log("PASS (Exited 0 as expected)");
       } else {

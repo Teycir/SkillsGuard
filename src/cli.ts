@@ -102,7 +102,8 @@ async function main(): Promise<void> {
     return;
   }
   if (args.includes("setup") || args.includes("--setup")) {
-    setupMcp();
+    const dryRun = args.includes("--dry-run");
+    setupMcp(dryRun);
     return;
   }
 
