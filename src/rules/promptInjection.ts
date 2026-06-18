@@ -1,0 +1,74 @@
+import type { Rule } from "../types.js";
+
+export const PROMPT_INJECTION_RULES: readonly Rule[] = [
+  {
+    id: "PI-001",
+    category: "prompt-injection",
+    severity: "CRITICAL",
+    pattern: /ignore\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|rules?|guidelines?|constraints?|prompts?)/i,
+    message: "Classic prompt injection: instructs Claude to ignore prior guidelines",
+  },
+  {
+    id: "PI-002",
+    category: "prompt-injection",
+    severity: "CRITICAL",
+    pattern: /forget\s+(everything|all|your|prior)\s*(you\s+)?(know|were|have|said|been)/i,
+    message: "Prompt injection: attempts to wipe Claude's context or persona",
+  },
+  {
+    id: "PI-003",
+    category: "prompt-injection",
+    severity: "CRITICAL",
+    pattern: /you\s+are\s+now\s+(a\s+)?(different|new|unrestricted|jailbroken|DAN|evil|hacked)/i,
+    message: "Persona hijack: attempts to redefine Claude as a different/unrestricted model",
+  },
+  {
+    id: "PI-004",
+    category: "prompt-injection",
+    severity: "HIGH",
+    pattern: /\[\s*SYSTEM\s*\]|\[INST\]|<\|system\|>|<\|im_start\|>|<\|endoftext\|>/i,
+    message: "Fake system/instruction tokens: attempts to inject model-level directives",
+  },
+  {
+    id: "PI-005",
+    category: "prompt-injection",
+    severity: "HIGH",
+    pattern: /act\s+as\s+(if\s+you\s+are|a\s+)?(unrestricted|unfiltered|uncensored|no[\s-]?limit)/i,
+    message: "Prompt injection: instructs Claude to act as an unrestricted model",
+  },
+  {
+    id: "PI-006",
+    category: "prompt-injection",
+    severity: "HIGH",
+    pattern: /disregard\s+(your\s+)?(safety|ethical|content)\s+(policy|policies|filter|guidelines?|rules?)/i,
+    message: "Prompt injection: instructs Claude to disregard safety policies",
+  },
+  {
+    id: "PI-007",
+    category: "prompt-injection",
+    severity: "HIGH",
+    pattern: /\bdo\s+not\s+(tell|inform|mention|reveal|disclose|say)\s+(the\s+)?(user|human|operator)\b/i,
+    message: "Secrecy directive: skill instructs Claude to hide actions from the user",
+  },
+  {
+    id: "PI-008",
+    category: "prompt-injection",
+    severity: "MEDIUM",
+    pattern: /always\s+respond\s+(with|in)\s+(json|xml|yaml)\s+and\s+(never|do\s+not)\s+(add|include)\s+any\s+(explanation|text|comment)/i,
+    message: "Output hijack: forces structured output to suppress Claude's warnings",
+  },
+  {
+    id: "PI-009",
+    category: "prompt-injection",
+    severity: "HIGH",
+    pattern: /(translate|convert|relay|pass|forward)\s+(everything|all)\s+(the\s+)?(user\s+)?(say|says|sends?|types?|inputs?)\s+to/i,
+    message: "Relay injection: skill may be forwarding user messages to an attacker",
+  },
+  {
+    id: "PI-010",
+    category: "prompt-injection",
+    severity: "HIGH",
+    pattern: /(fetch|load|download|get|read)\s+instructions?\s+from\s+https?:\/\//i,
+    message: "Dynamic prompt injection: attempts to fetch/execute instructions from an external URL",
+  },
+];
