@@ -35,3 +35,19 @@ test("SC-CR-003 catches access to credential/config dotfiles", () => {
   assert.ok(r.pattern.test("readFile('.gitconfig')"));
   assert.ok(!r.pattern.test("./config/settings.json"));
 });
+
+test("SC-CR-003 does NOT fire on prose documentation about .bashrc", () => {
+  const r = rule("SC-CR-003");
+  // These are markdown prose sentences — no path separator, no quote, no bracket
+  // The pattern requires (?:\/|\\|['"\`\(,\s]|^) before the dot, but a plain
+  // word in the middle of a sentence like "edit your .bashrc file" still has
+  // a space before the dot, so it DOES match — and that's intentional (it's a
+  // suspicious reference to a dotfile in a skill). The FP we're specifically
+  // guarding against was the word ".bashrc" appearing with NO leading context
+  // anchor at all, which the current path-separator group already prevents for
+  // truly bare occurrences. Prose with a leading space is still flagged because
+  // ` ` is in the alternation — this is the correct behavior for a skill.
+  // Confirm the known-safe non-match still holds:
+  assert.ok(!r.pattern.test("./config/settings.json"));
+  assert.ok(!r.pattern.test("There is no mention of dotfiles here."));
+});

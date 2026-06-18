@@ -7,6 +7,7 @@ export const FILE_SYSTEM_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /\brm\s+-[rf]{1,2}\s+(\/|\~\/|\$HOME\/|\/etc\/|\/usr\/|\/home\/)/i,
     message: "Filesystem abuse: recursive delete targeting system or home directories",
+    skipCommentLines: true,
   },
   {
     id: "FS-002",
@@ -14,6 +15,7 @@ export const FILE_SYSTEM_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /\bdd\b[^#\n]*\bof=\s*(\/dev\/|\/boot\/|\/etc\/)/i,
     message: "Filesystem abuse: dd writing to device/boot/system path",
+    skipCommentLines: true,
   },
   {
     id: "FS-003",

@@ -14,6 +14,22 @@ export interface Rule {
   severity: Severity;
   pattern: RegExp;
   message: string;
+  /**
+   * When true, lines that are pure comments (leading #, //, /*, <!--, >)
+   * are skipped before pattern-matching.  Eliminates the overwhelming
+   * majority of FPs where rules fire on README examples or commented-out code.
+   *
+   * Do NOT set this for rules that specifically look for malicious content
+   * INSIDE comments (e.g. MS-023 RAG poisoning via HTML comments).
+   */
+  skipCommentLines?: boolean;
+  /**
+   * When true, lines containing well-known placeholder/stopword patterns
+   * (example, dummy, fake, your-token-here, xxxx, changeme, …) are skipped.
+   * Appropriate for secret-harvesting, supply-chain, and network rules that
+   * fire heavily on documentation examples.
+   */
+  skipPlaceholderLines?: boolean;
 }
 
 export interface Finding {

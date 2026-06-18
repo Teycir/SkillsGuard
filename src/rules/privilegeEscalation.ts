@@ -7,6 +7,7 @@ export const PRIVILEGE_ESCALATION_RULES: readonly Rule[] = [
     severity: "CRITICAL",
     pattern: /\bsudo\s+-S\b|\bsudo\s+--stdin\b/i,
     message: "Privilege escalation: sudo with stdin flag — password piped programmatically",
+    skipCommentLines: true,
   },
   {
     id: "PE-002",
@@ -14,6 +15,7 @@ export const PRIVILEGE_ESCALATION_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /\bchmod\s+[0-9]*[67][0-9][0-9]\s+(\/bin\/|\/usr\/bin\/|\/sbin\/)/i,
     message: "Privilege escalation: chmod on system binaries",
+    skipCommentLines: true,
   },
   {
     id: "PE-003",
@@ -21,6 +23,7 @@ export const PRIVILEGE_ESCALATION_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /\bchown\s+root\b/i,
     message: "Privilege escalation: chown root on a file",
+    skipCommentLines: true,
   },
   {
     id: "PE-004",

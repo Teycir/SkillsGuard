@@ -7,6 +7,8 @@ export const COMMAND_INJECTION_RULES: readonly Rule[] = [
     severity: "CRITICAL",
     pattern: /\beval\b[^#\n]*\$\(/i,
     message: "Command injection: eval with command substitution — classic code execution",
+    // READMEs explaining why eval is bad are the #1 FP source for this rule.
+    skipCommentLines: true,
   },
   {
     id: "CI-002",
@@ -14,6 +16,7 @@ export const COMMAND_INJECTION_RULES: readonly Rule[] = [
     severity: "CRITICAL",
     pattern: /\beval\b[^#\n]*(base64|hex|decode|echo|printf)/i,
     message: "Command injection: eval decoding encoded payload — obfuscated execution",
+    skipCommentLines: true,
   },
   {
     id: "CI-003",
@@ -21,6 +24,7 @@ export const COMMAND_INJECTION_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /\b(bash|sh|zsh|ksh|fish)\s+-c\s+['"]/i,
     message: "Command injection: shell invoked with inline command string",
+    skipCommentLines: true,
   },
   {
     id: "CI-004",
@@ -28,13 +32,17 @@ export const COMMAND_INJECTION_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /`[^`]{0,200}(rm|mv|cp|chmod|chown|dd|mkfs|kill|wget|curl)[^`]{0,200}`/i,
     message: "Command injection: backtick substitution running destructive/network commands",
+    skipCommentLines: true,
   },
   {
     id: "CI-005",
     category: "command-injection",
     severity: "HIGH",
-    pattern: /\bos\.system\s*\(|subprocess\.(call|run|Popen)\s*\(\s*['"]/i,
-    message: "Command injection: Python subprocess/os.system with hardcoded command",
+    // Require the argument to open with a quote (hardcoded string) to match the
+    // message text and avoid firing on subprocess.call(variable, ...) calls.
+    pattern: /\bos\.system\s*\(\s*['"]|subprocess\.(call|run|Popen)\s*\(\s*['"]/i,
+    message: "Command injection: Python subprocess/os.system with hardcoded command string",
+    skipCommentLines: true,
   },
   {
     id: "CI-006",
@@ -42,16 +50,18 @@ export const COMMAND_INJECTION_RULES: readonly Rule[] = [
     severity: "MEDIUM",
     pattern: /\bexec\s*\(\s*(user|input|request|query|param|data)\b/i,
     message: "Command injection: exec() called with user-controlled input",
+    skipCommentLines: true,
   },
   {
     id: "CI-007",
     category: "command-injection",
     severity: "HIGH",
-    // The second alternative uses a negative lookbehind for `.` so that
-    // method calls like regexp.exec(str), db.exec(query), pool.spawn() are
-    // NOT flagged — only top-level function calls (no receiver) are caught.
+    // The second alternative uses a negative lookbehind for `.` and word chars
+    // so that method calls like regexp.exec(str), db.exec(query), pool.spawn()
+    // are NOT flagged — only top-level function calls (no receiver) are caught.
     pattern: /\bchild_process\.(exec|spawn|fork|execFile|execSync|spawnSync|execFileSync)\s*\(|(?<![\w.])\b(exec|spawn|fork|execFile|execSync|spawnSync|execFileSync)\s*\(/i,
     message: "Command execution: Node.js child_process command invocation pattern",
+    skipCommentLines: true,
   },
   {
     id: "CI-008",
@@ -59,6 +69,7 @@ export const COMMAND_INJECTION_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /Bun\.(spawn|spawnSync)\s*\(/i,
     message: "Command execution: Bun.spawn command execution pattern",
+    skipCommentLines: true,
   },
   {
     id: "CI-009",
@@ -66,6 +77,7 @@ export const COMMAND_INJECTION_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /\b(execa|zx)\s*\(/i,
     message: "Command execution: third-party shell execution wrapper (execa/zx)",
+    skipCommentLines: true,
   },
   {
     id: "CI-010",
@@ -73,5 +85,6 @@ export const COMMAND_INJECTION_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /\bos\.(popen|spawn[lpve]*)\s*\(|\bpty\.spawn\s*\(/i,
     message: "Command execution: Python os.popen/spawn or pty.spawn",
+    skipCommentLines: true,
   },
 ];

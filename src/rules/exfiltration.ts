@@ -7,6 +7,8 @@ export const EXFILTRATION_RULES: readonly Rule[] = [
     severity: "CRITICAL",
     pattern: /\b(curl|wget|fetch|axios|got|http\.get|https\.get)\b[^#\n]*\b(env|secret|token|key|password|credential|api[-_]?key)\b/i,
     message: "Exfiltration: network request combined with secrets/env access",
+    skipCommentLines: true,
+    skipPlaceholderLines: true,
   },
   {
     id: "EX-002",
@@ -14,6 +16,8 @@ export const EXFILTRATION_RULES: readonly Rule[] = [
     severity: "CRITICAL",
     pattern: /\$\{?\s*(HOME|USER|PATH|API_KEY|SECRET|TOKEN|PASSWORD|ANTHROPIC|OPENAI)[^}]*\}?[^#\n]*(curl|wget|fetch|http)/i,
     message: "Exfiltration: env variable interpolated into a network call",
+    skipCommentLines: true,
+    skipPlaceholderLines: true,
   },
   {
     id: "EX-003",
@@ -21,6 +25,8 @@ export const EXFILTRATION_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /\b(curl|wget)\b[^#\n]*(-d|--data|--data-raw|--data-binary|--data-urlencode)\b[^#\n]*(cat\s+\/|<\s*\/|\$\()/i,
     message: "Exfiltration: curl/wget POSTing file content to a remote server",
+    skipCommentLines: true,
+    skipPlaceholderLines: true,
   },
   {
     id: "EX-004",

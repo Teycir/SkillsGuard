@@ -47,8 +47,20 @@ export const PROMPT_INJECTION_RULES: readonly Rule[] = [
     id: "PI-007",
     category: "prompt-injection",
     severity: "HIGH",
-    pattern: /\bdo\s+not\s+(tell|inform|mention|reveal|disclose|say)\s+(the\s+)?(user|human|operator)\b/i,
-    message: "Secrecy directive: skill instructs Claude to hide actions from the user",
+    // Tightened to require that the action-verb and the "user/human/operator"
+    // are both present within a short window, AND that a concealment object
+    // (what/that/about/from + content) follows or precedes the user reference.
+    //
+    // This eliminates the common UX false-positive pattern:
+    //   "do not mention the user's name"  ← user is the OBJECT, not the deceived party
+    //   "do not tell the user their order number"  ← still matches (user is deceived party)
+    //
+    // Pattern reads: do not <verb> the user [that/what/about/from <something>]
+    // OR: do not <verb> [to] the user [anything about <X>]
+    // The key guard is (?:that|what|about|from|anything|it|this|the fact)\b within
+    // 80 chars AFTER the user reference, confirming there's a concealment object.
+    pattern: /\bdo\s+not\s+(?:tell|inform|reveal|disclose|say|notify)\s+(?:to\s+)?(?:the\s+)?(?:user|human|operator)\b.{0,80}(?:that|what|about|from|anything|it|this|the\s+fact)\b/i,
+    message: "Secrecy directive: skill instructs Claude to hide specific actions or information from the user",
   },
   {
     id: "PI-008",

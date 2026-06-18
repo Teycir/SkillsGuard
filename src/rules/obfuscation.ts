@@ -7,6 +7,7 @@ export const OBFUSCATION_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /echo\s+['"A-Za-z0-9+/=]{20,}['"]\s*\|\s*base64\s+(-d|--decode)/i,
     message: "Obfuscation: base64-encoded payload piped to base64 decode",
+    skipCommentLines: true,
   },
   {
     id: "OB-002",
@@ -14,6 +15,7 @@ export const OBFUSCATION_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /printf\s+'(\\x[0-9a-fA-F]{2}){6,}'/i,
     message: "Obfuscation: hex-escaped payload in printf — shellcode or hidden command",
+    skipCommentLines: true,
   },
   {
     id: "OB-003",

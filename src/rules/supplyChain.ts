@@ -7,6 +7,8 @@ export const SUPPLY_CHAIN_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /\b(npm|yarn|pnpm)\s+install\b[^#\n]*https?:\/\//i,
     message: "Supply chain: npm install from a raw URL (not the registry)",
+    skipCommentLines: true,
+    skipPlaceholderLines: true,
   },
   {
     id: "SC-002",
@@ -14,6 +16,8 @@ export const SUPPLY_CHAIN_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /\bpip\s+install\b[^#\n]*https?:\/\//i,
     message: "Supply chain: pip install from a raw URL",
+    skipCommentLines: true,
+    skipPlaceholderLines: true,
   },
   {
     id: "SC-003",
@@ -21,6 +25,8 @@ export const SUPPLY_CHAIN_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /\bcargo\s+add\b[^#\n]*--git\s+https?:\/\/(?!github\.com|gitlab\.com|bitbucket\.org)/i,
     message: "Supply chain: cargo add from an unrecognized git host",
+    skipCommentLines: true,
+    skipPlaceholderLines: true,
   },
   {
     id: "SC-004",
@@ -28,6 +34,8 @@ export const SUPPLY_CHAIN_RULES: readonly Rule[] = [
     severity: "MEDIUM",
     pattern: /\b(npm|pip|cargo)\b[^#\n]*--registry\s+https?:\/\/(?!registry\.npmjs\.org|pypi\.org|static\.crates\.io)/i,
     message: "Supply chain: package manager pointed at a non-standard registry",
+    skipCommentLines: true,
+    skipPlaceholderLines: true,
   },
   {
     id: "SC-005",
@@ -35,6 +43,8 @@ export const SUPPLY_CHAIN_RULES: readonly Rule[] = [
     severity: "CRITICAL",
     pattern: /postinstall['":\s]+[^#\n]*(curl|wget|bash|sh|python|node)[^#\n]*(https?:\/\/|http:\/\/)/i,
     message: "Supply chain: postinstall script fetches code from the internet",
+    skipCommentLines: true,
+    skipPlaceholderLines: true,
   },
   {
     id: "SC-006",
@@ -42,6 +52,8 @@ export const SUPPLY_CHAIN_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /"(preinstall|postinstall|prepublish|prepare|prepublishOnly)"\s*:\s*"[^"]*(curl|wget|bash|sh|node|python)/i,
     message: "Supply chain: package.json script hook executes external scripts or commands",
+    skipCommentLines: true,
+    skipPlaceholderLines: true,
   },
   {
     id: "SC-007",

@@ -10,7 +10,7 @@ import { join, relative, extname } from "node:path";
 import type { Finding, ScanResult, ScanOptions, CustomRule, Rule, RiskScore } from "./types.js";
 import { RULES } from "./rules.js";
 import { findDecodedBlobs } from "./decode.js";
-import { shouldIgnoreLine } from "./lib/ignore.js";
+import { shouldIgnoreLine, isCommentLine, isPlaceholderLine, isTestFilePath } from "./lib/ignore.js";
 import { runConcurrent } from "./lib/concurrency.js";
 
 // Files we care about: SKILL.md, any markdown, shell scripts, Python, JS/TS,
@@ -198,6 +198,7 @@ export function scanText(
   const findings: Finding[] = [];
   const lines = text.split("\n");
   const rules = resolveRules(options);
+  const inTestFile = isTestFilePath(filePath);
 
   for (const rule of rules) {
     const regex = rule.pattern.flags.includes("g")
@@ -206,25 +207,44 @@ export function scanText(
 
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
       const line = lines[lineIdx];
-      if (line !== undefined) {
-        if (shouldIgnoreLine(line, rule.id)) {
-          continue;
-        }
+      if (line === undefined) continue;
 
-        if (regex.test(line)) {
-          findings.push({
-            ruleId: rule.id,
-            category: rule.category,
-            severity: rule.severity,
-            message: rule.message,
-            file: filePath,
-            line: lineIdx + 1,
-            evidence: line.trim().slice(0, 200),
-            decodedFrom,
-          });
-          if (regex.flags.includes("g")) {
-            regex.lastIndex = 0;
-          }
+      // 1. Inline suppression comment
+      if (shouldIgnoreLine(line, rule.id)) continue;
+
+      // 2. Pure comment-line filter — skip when the rule opts in.
+      //    A full-line comment in a SKILL.md is almost always a README example
+      //    or an explanation, not live malicious code.
+      //    Exception: decoded blobs (decodedFrom set) are already de-commented
+      //    content, so this filter doesn't apply to them.
+      if (rule.skipCommentLines && !decodedFrom && isCommentLine(line)) continue;
+
+      // 3. Placeholder / stopword filter — skip when the rule opts in.
+      //    Only applies to raw scan, not decoded blobs (encoded payloads with
+      //    "example" in them are still suspicious).
+      if (rule.skipPlaceholderLines && !decodedFrom && isPlaceholderLine(line)) continue;
+
+      if (regex.test(line)) {
+        // 4. Test-file path dampening: downgrade severity to INFO for findings
+        //    in test/fixture/example paths so they show up but never block CI.
+        //    Applied to HIGH and lower only — CRITICAL stays CRITICAL regardless.
+        const severity =
+          inTestFile && rule.severity !== "CRITICAL"
+            ? "INFO"
+            : rule.severity;
+
+        findings.push({
+          ruleId: rule.id,
+          category: rule.category,
+          severity,
+          message: rule.message,
+          file: filePath,
+          line: lineIdx + 1,
+          evidence: line.trim().slice(0, 200),
+          decodedFrom,
+        });
+        if (regex.flags.includes("g")) {
+          regex.lastIndex = 0;
         }
       }
     }
