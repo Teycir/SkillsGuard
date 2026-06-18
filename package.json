@@ -12,8 +12,11 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "build:test": "tsc -p tsconfig.test.json",
     "dev": "tsc -p tsconfig.json --watch",
-    "test:fixtures": "node testskills/run-tests.js"
+    "test:unit": "node --test dist-test/tests/*.test.js dist-test/tests/**/*.test.js",
+    "test:fixtures": "node testskills/run-tests.js",
+    "test": "npm run build && npm run build:test && npm run test:unit && npm run test:fixtures"
   },
   "engines": {
     "node": ">=18.3.0"

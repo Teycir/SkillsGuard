@@ -5,22 +5,24 @@
  * and returns a ScanResult.
  */
 
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, stat, realpath } from "node:fs/promises";
 import { join, relative, extname } from "node:path";
 import type { Finding, ScanResult } from "./types.js";
 import { RULES } from "./rules.js";
 import { findDecodedBlobs } from "./decode.js";
+import { shouldIgnoreLine } from "./lib/ignore.js";
+import { runConcurrent } from "./lib/concurrency.js";
 
 // Files we care about: SKILL.md, any markdown, shell scripts, Python, JS/TS,
 // yaml/toml configs, and text files. We skip binary and lock files.
-const ALLOWED_EXTENSIONS = new Set([
+const ALLOWED_EXTENSIONS = new Set<string>([
   ".md", ".txt", ".sh", ".bash", ".zsh", ".fish",
   ".py", ".js", ".mjs", ".cjs", ".ts", ".mts", ".cts",
   ".json", ".yaml", ".yml", ".toml", ".env", ".conf", ".cfg",
   ".html", ".xml",
 ]);
 
-const SKIP_DIRS = new Set([
+const SKIP_DIRS = new Set<string>([
   "node_modules", ".git", ".trunk", "dist", "build",
   "__pycache__", ".mypy_cache", ".pytest_cache", "coverage",
   ".next", ".open-next", ".wrangler", "target", ".cargo",
@@ -31,16 +33,26 @@ const MAX_FILE_SIZE = 512 * 1024; // 512 KB — skip suspiciously large files
 
 // ─── File discovery ──────────────────────────────────────────────────────────
 
-async function collectFiles(target: string): Promise<string[]> {
+async function collectFiles(target: string): Promise<readonly string[]> {
   const s = await stat(target);
   if (s.isFile()) return [target];
 
   const results: string[] = [];
   const queue: string[] = [target];
+  const visited = new Set<string>();
 
   while (queue.length > 0) {
     const dir = queue.pop()!;
-    let entries: { name: string; isDirectory(): boolean; isFile(): boolean }[];
+    let realDir: string;
+    try {
+      realDir = await realpath(dir);
+    } catch {
+      continue;
+    }
+    if (visited.has(realDir)) continue;
+    visited.add(realDir);
+
+    let entries: { name: string; isDirectory(): boolean; isFile(): boolean; isSymbolicLink(): boolean }[];
     try {
       entries = await readdir(dir, { withFileTypes: true });
     } catch {
@@ -48,11 +60,23 @@ async function collectFiles(target: string): Promise<string[]> {
     }
     for (const entry of entries) {
       const full = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (!SKIP_DIRS.has(entry.name)) queue.push(full);
-      } else if (entry.isFile()) {
+
+      let isDir = entry.isDirectory();
+      if (entry.isSymbolicLink()) {
+        try {
+          const symStat = await stat(full);
+          isDir = symStat.isDirectory();
+        } catch {
+          continue;
+        }
+      }
+
+      if (isDir) {
+        if (!SKIP_DIRS.has(entry.name)) {
+          queue.push(full);
+        }
+      } else {
         const ext = extname(entry.name).toLowerCase();
-        // Always include SKILL.md regardless of naming; also include by extension
         if (entry.name === "SKILL.md" || ALLOWED_EXTENSIONS.has(ext)) {
           results.push(full);
         }
@@ -63,48 +87,42 @@ async function collectFiles(target: string): Promise<string[]> {
   return results;
 }
 
-// ─── Line indexer ────────────────────────────────────────────────────────────
-
-function indexToLine(content: string, index: number): number {
-  let line = 1;
-  for (let i = 0; i < index && i < content.length; i++) {
-    if (content[i] === "\n") line++;
-  }
-  return line;
-}
-
-function getLineContent(content: string, lineNum: number): string {
-  const lines = content.split("\n");
-  return (lines[lineNum - 1] ?? "").trim().slice(0, 200);
-}
-
-// ─── Single file scan ────────────────────────────────────────────────────────
+// ─── Scanning logic ─────────────────────────────────────────────────────────
 
 function scanText(
   text: string,
   filePath: string,
   decodedFrom?: string,
-): Finding[] {
+): readonly Finding[] {
   const findings: Finding[] = [];
   const lines = text.split("\n");
 
   for (const rule of RULES) {
-    const regex = new RegExp(rule.pattern.source, rule.pattern.flags);
+    const regex = rule.pattern.flags.includes("g")
+      ? new RegExp(rule.pattern.source, rule.pattern.flags)
+      : rule.pattern;
+
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
       const line = lines[lineIdx];
-      if (line !== undefined && regex.test(line)) {
-        findings.push({
-          ruleId: rule.id,
-          category: rule.category,
-          severity: rule.severity,
-          message: rule.message,
-          file: filePath,
-          line: lineIdx + 1,
-          evidence: line.trim().slice(0, 200),
-          decodedFrom,
-        });
-        if (regex.flags.includes("g")) {
-          regex.lastIndex = 0;
+      if (line !== undefined) {
+        if (shouldIgnoreLine(line, rule.id)) {
+          continue;
+        }
+
+        if (regex.test(line)) {
+          findings.push({
+            ruleId: rule.id,
+            category: rule.category,
+            severity: rule.severity,
+            message: rule.message,
+            file: filePath,
+            line: lineIdx + 1,
+            evidence: line.trim().slice(0, 200),
+            decodedFrom,
+          });
+          if (regex.flags.includes("g")) {
+            regex.lastIndex = 0;
+          }
         }
       }
     }
@@ -113,7 +131,7 @@ function scanText(
   return findings;
 }
 
-async function scanFile(filePath: string, rootDir: string): Promise<Finding[]> {
+async function scanFile(filePath: string, rootDir: string): Promise<readonly Finding[]> {
   const relPath = relative(rootDir, filePath);
   let content: string;
   try {
@@ -135,11 +153,8 @@ async function scanFile(filePath: string, rootDir: string): Promise<Finding[]> {
   }
 
   const findings: Finding[] = [];
-
-  // 1. Scan raw content
   findings.push(...scanText(content, relPath));
 
-  // 2. Scan decoded blobs (catches obfuscated payloads)
   const blobs = findDecodedBlobs(content);
   for (const blob of blobs) {
     const blobFindings = scanText(blob.decoded, relPath, `${blob.encoding}:${blob.raw.slice(0, 40)}`);
@@ -151,10 +166,10 @@ async function scanFile(filePath: string, rootDir: string): Promise<Finding[]> {
 
 // ─── Deduplication ───────────────────────────────────────────────────────────
 
-function dedup(findings: Finding[]): Finding[] {
+function dedup(findings: readonly Finding[]): readonly Finding[] {
   const seen = new Set<string>();
   return findings.filter((f) => {
-    const key = `${f.ruleId}:${f.file}:${f.line}`;
+    const key = `${f.ruleId}:${f.file}:${f.line}:${f.decodedFrom ?? ""}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -176,17 +191,17 @@ export async function scan(target: string): Promise<ScanResult> {
   }
 
   const files = await collectFiles(target);
+  const scanResults = await runConcurrent(files, 16, (file) => scanFile(file, rootDir));
+  
   const allFindings: Finding[] = [];
-
-  for (const file of files) {
-    const findings = await scanFile(file, rootDir);
+  for (const findings of scanResults) {
     allFindings.push(...findings);
   }
 
   return {
     target,
     filesScanned: files.length,
-    findings: dedup(allFindings),
+    findings: [...dedup(allFindings)],
     durationMs: Date.now() - start,
   };
 }

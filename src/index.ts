@@ -9,3 +9,6 @@ export { findDecodedBlobs } from "./decode.js";
 export { reportHuman, reportJson } from "./report.js";
 export type { Rule, Finding, ScanResult, Severity } from "./types.js";
 export { setupMcp } from "./setup.js";
+export { isSafePath } from "./lib/path.js";
+export { shouldIgnoreLine } from "./lib/ignore.js";
+export { runConcurrent } from "./lib/concurrency.js";

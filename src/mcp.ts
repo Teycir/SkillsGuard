@@ -1,5 +1,11 @@
 import { stdin, stdout } from "node:process";
 import { scan } from "./scanner.js";
+import { createRequire } from "node:module";
+import { isSafePath } from "./lib/path.js";
+
+const require = createRequire(import.meta.url);
+const pkg = require("../package.json");
+const version = typeof pkg === "object" && pkg !== null && "version" in pkg && typeof pkg.version === "string" ? pkg.version : "0.1.0";
 
 interface JsonRpcRequest {
   readonly jsonrpc: "2.0";
@@ -63,7 +69,7 @@ async function handleRequest(line: string): Promise<void> {
       },
       serverInfo: {
         name: "skillsguard",
-        version: "0.1.0",
+        version,
       },
     });
     return;
@@ -103,6 +109,24 @@ async function handleRequest(line: string): Promise<void> {
       const targetPath = args?.["path"];
       if (typeof targetPath !== "string") {
         sendError(id, -32602, "Invalid params: 'path' must be a string");
+        return;
+      }
+
+      if (targetPath.length > 4096) {
+        sendError(id, -32602, "Path too long");
+        return;
+      }
+
+      if (!isSafePath(targetPath)) {
+        sendResult(id, {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: `Access denied: Target path '${targetPath}' is outside the authorized workspace or contains sensitive files.`,
+            },
+          ],
+        });
         return;
       }
 
