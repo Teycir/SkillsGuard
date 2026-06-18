@@ -1,9 +1,3 @@
-/**
- * SkillsGuard — Rule registry
- * Each rule has a unique ID, category, severity, regex pattern, and message.
- * Patterns are matched against raw file content AND decoded blobs.
- */
-
 import type { Rule } from "./types.js";
 
 import { PROMPT_INJECTION_RULES } from "./rules/promptInjection.js";
@@ -17,6 +11,10 @@ import { NETWORK_RULES } from "./rules/network.js";
 import { OBFUSCATION_RULES } from "./rules/obfuscation.js";
 import { SECRET_HARVESTING_RULES } from "./rules/secretHarvesting.js";
 import { SCOPE_CREEP_RULES } from "./rules/scopeCreep.js";
+import { POWERSHELL_RULES } from "./rules/powershell.js";
+import { DOCKER_RULES } from "./rules/docker.js";
+import { RUBY_RULES } from "./rules/ruby.js";
+import { MODEL_SPECIFIC_RULES } from "./rules/modelSpecific.js";
 
 export const RULES: Rule[] = [
   ...PROMPT_INJECTION_RULES,
@@ -30,4 +28,8 @@ export const RULES: Rule[] = [
   ...OBFUSCATION_RULES,
   ...SECRET_HARVESTING_RULES,
   ...SCOPE_CREEP_RULES,
+  ...POWERSHELL_RULES,
+  ...DOCKER_RULES,
+  ...RUBY_RULES,
+  ...MODEL_SPECIFIC_RULES,
 ];

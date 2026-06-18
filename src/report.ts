@@ -5,7 +5,7 @@
  *   json   — machine-parseable, one JSON object to stdout
  */
 
-import type { ScanResult, Severity } from "./types.js";
+import type { ScanResult, Severity, RiskScore } from "./types.js";
 import { SEVERITY_RANK } from "./types.js";
 
 // ANSI color codes (no external dep)
@@ -48,7 +48,8 @@ export function reportHuman(result: ScanResult, noColor: boolean): void {
   console.log(use(`${C.dim}${filesScanned} file(s) · ${durationMs}ms${C.reset}\n`));
 
   if (findings.length === 0) {
-    console.log(use(`${C.green}${C.bold}✓ No issues found.${C.reset}\n`));
+    console.log(use(`${C.green}${C.bold}✓ No issues found.${C.reset}`));
+    console.log(use(`${C.dim}Risk score: 0/100 NONE  [░░░░░░░░░░░░░░░░░░░░]${C.reset}\n`));
     return;
   }
 
@@ -92,6 +93,17 @@ export function reportHuman(result: ScanResult, noColor: boolean): void {
   }
 
   console.log(use(`${C.bold}Summary:${C.reset} ${findings.length} finding(s) — ${parts.join(", ")}\n`));
+
+  // Risk score gauge
+  const { score, label } = result.riskScore;
+  const riskColor = label === "CRITICAL" ? `${C.bold}${C.bgRed}${C.white}`
+    : label === "HIGH"     ? `${C.bold}${C.red}`
+    : label === "MEDIUM"   ? `${C.bold}${C.yellow}`
+    : label === "LOW"      ? `${C.bold}${C.cyan}`
+    : C.dim;
+  const filled = Math.round(score / 5);  // 0-20 blocks
+  const bar = "█".repeat(filled) + "░".repeat(20 - filled);
+  console.log(use(`${C.bold}Risk score:${C.reset} ${riskColor}${score}/100 ${label}${C.reset}  ${C.dim}[${bar}]${C.reset}\n`));
 }
 
 export function reportJson(result: ScanResult): void {

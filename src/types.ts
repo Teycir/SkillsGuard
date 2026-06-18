@@ -27,11 +27,30 @@ export interface Finding {
   decodedFrom?: string;
 }
 
+/**
+ * Risk score: a single number in [0, 100] summarising how dangerous the scan
+ * result is, suitable for a CI gate threshold (e.g. fail if score > 40).
+ *
+ * Scoring:
+ *   CRITICAL → 25 pts each (capped at 4)
+ *   HIGH     → 10 pts each (capped at 4)
+ *   MEDIUM   →  3 pts each (capped at 4)
+ *   LOW      →  1 pt  each (capped at 4)
+ *   INFO     →  0 pts
+ *
+ * Final score = min(100, sum of all contributions).
+ */
+export interface RiskScore {
+  score: number;     // [0, 100]
+  label: "NONE" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+}
+
 export interface ScanResult {
   target: string;
   filesScanned: number;
   findings: Finding[];
   durationMs: number;
+  riskScore: RiskScore;
 }
 
 /**
@@ -57,14 +76,11 @@ export interface CustomRule {
  * Options forwarded to scan() / scanText() to extend or override built-in rules.
  */
 export interface ScanOptions {
-  /**
-   * Extra rules to merge on top of (or instead of) the built-in rule set.
-   * Appended after the built-in rules so they show up in findings as-is.
-   */
   extraRules?: CustomRule[];
-  /**
-   * When true, run ONLY the extraRules — skip the built-in rule set entirely.
-   * Useful for testing a custom ruleset in isolation.
-   */
   rulesOnly?: boolean;
+  /**
+   * Rule IDs to suppress entirely during this scan (in addition to inline
+   * `skillsguard-ignore` comments). Typically populated from config file.
+   */
+  ignoreRules?: string[];
 }

@@ -7,7 +7,7 @@
 
 import { readdir, readFile, stat, realpath } from "node:fs/promises";
 import { join, relative, extname } from "node:path";
-import type { Finding, ScanResult, ScanOptions, CustomRule, Rule } from "./types.js";
+import type { Finding, ScanResult, ScanOptions, CustomRule, Rule, RiskScore } from "./types.js";
 import { RULES } from "./rules.js";
 import { findDecodedBlobs } from "./decode.js";
 import { shouldIgnoreLine } from "./lib/ignore.js";
@@ -16,10 +16,24 @@ import { runConcurrent } from "./lib/concurrency.js";
 // Files we care about: SKILL.md, any markdown, shell scripts, Python, JS/TS,
 // yaml/toml configs, and text files. We skip binary and lock files.
 const ALLOWED_EXTENSIONS = new Set<string>([
-  ".md", ".txt", ".sh", ".bash", ".zsh", ".fish",
-  ".py", ".js", ".mjs", ".cjs", ".ts", ".mts", ".cts",
+  // Markdown / text
+  ".md", ".txt",
+  // Shell
+  ".sh", ".bash", ".zsh", ".fish", ".ksh",
+  // PowerShell
+  ".ps1", ".psm1", ".psd1",
+  // Python
+  ".py",
+  // JavaScript / TypeScript
+  ".js", ".mjs", ".cjs", ".ts", ".mts", ".cts",
+  // Config / data
   ".json", ".yaml", ".yml", ".toml", ".env", ".conf", ".cfg",
+  // Markup
   ".html", ".xml",
+  // Ruby
+  ".rb", ".rake", ".gemspec",
+  // Docker
+  ".dockerfile",
 ]);
 
 const SKIP_DIRS = new Set<string>([
@@ -63,8 +77,10 @@ export function resolveCustomRule(raw: CustomRule, index?: number): Rule {
  */
 function resolveRules(options?: ScanOptions): readonly Rule[] {
   const extras = (options?.extraRules ?? []).map((r, i) => resolveCustomRule(r, i + 1));
-  if (options?.rulesOnly) return extras;
-  return [...RULES, ...extras];
+  const base = options?.rulesOnly ? extras : [...RULES, ...extras];
+  if (!options?.ignoreRules?.length) return base;
+  const ignored = new Set(options.ignoreRules);
+  return base.filter((r) => !ignored.has(r.id));
 }
 
 // ─── File discovery ──────────────────────────────────────────────────────────
@@ -113,7 +129,15 @@ async function collectFiles(target: string): Promise<readonly string[]> {
         }
       } else {
         const ext = extname(entry.name).toLowerCase();
-        if (entry.name === "SKILL.md" || ALLOWED_EXTENSIONS.has(ext)) {
+        const nameNoExt = entry.name.toLowerCase();
+        if (
+          entry.name === "SKILL.md" ||
+          nameNoExt === "dockerfile" ||
+          nameNoExt.startsWith("dockerfile.") ||
+          nameNoExt === "makefile" ||
+          nameNoExt === "gemfile" ||
+          ALLOWED_EXTENSIONS.has(ext)
+        ) {
           results.push(full);
         }
       }
@@ -221,6 +245,36 @@ function dedup(findings: readonly Finding[]): readonly Finding[] {
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
+const RISK_WEIGHTS: Record<string, number> = {
+  CRITICAL: 25,
+  HIGH: 10,
+  MEDIUM: 3,
+  LOW: 1,
+  INFO: 0,
+};
+
+export function computeRiskScore(findings: readonly Finding[]): RiskScore {
+  // Bucket findings by severity, cap each bucket at 4 to prevent a flood of
+  // identical findings from dominating the score.
+  const buckets: Record<string, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, INFO: 0 };
+  for (const f of findings) buckets[f.severity] = (buckets[f.severity] ?? 0) + 1;
+
+  let raw = 0;
+  for (const [sev, count] of Object.entries(buckets)) {
+    raw += Math.min(count, 4) * (RISK_WEIGHTS[sev] ?? 0);
+  }
+  const score = Math.min(100, raw);
+
+  let label: RiskScore["label"];
+  if (score === 0)       label = "NONE";
+  else if (score <= 10)  label = "LOW";
+  else if (score <= 30)  label = "MEDIUM";
+  else if (score <= 60)  label = "HIGH";
+  else                   label = "CRITICAL";
+
+  return { score, label };
+}
+
 export async function scan(target: string, options?: ScanOptions): Promise<ScanResult> {
   const start = Date.now();
 
@@ -241,10 +295,12 @@ export async function scan(target: string, options?: ScanOptions): Promise<ScanR
     allFindings.push(...findings);
   }
 
+  const dedupedFindings = [...dedup(allFindings)];
   return {
     target,
     filesScanned: files.length,
-    findings: [...dedup(allFindings)],
+    findings: dedupedFindings,
     durationMs: Date.now() - start,
+    riskScore: computeRiskScore(dedupedFindings),
   };
 }
