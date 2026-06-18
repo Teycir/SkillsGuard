@@ -22,6 +22,8 @@ import { scan } from "./scanner.js";
 import { reportHuman, reportJson } from "./report.js";
 import type { Severity, ScanResult } from "./types.js";
 import { SEVERITY_RANK } from "./types.js";
+import { runMcpServer } from "./mcp.js";
+import { setupMcp } from "./setup.js";
 
 const VALID_SEVERITIES = new Set<string>(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]);
 
@@ -94,6 +96,16 @@ function parseArgs(argv: string[]): {
 }
 
 async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  if (args.includes("--mcp")) {
+    await runMcpServer();
+    return;
+  }
+  if (args.includes("setup") || args.includes("--setup")) {
+    setupMcp();
+    return;
+  }
+
   const opts = parseArgs(process.argv);
   if (!opts) {
     usage();

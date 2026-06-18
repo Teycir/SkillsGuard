@@ -33,7 +33,7 @@ export const PRIVILEGE_ESCALATION_RULES: readonly Rule[] = [
     id: "PE-005",
     category: "privilege-escalation",
     severity: "HIGH",
-    pattern: /process\.(setuid|setgid|setegid|seteuid)\s*\(|os\.(setuid|setgid|seteuid|setegid)\s*\(/i,
+    pattern: /\bprocess\.(setuid|setgid|setegid|seteuid)\s*\(|(?<!\.)\b(setuid|setgid|setegid|seteuid)\s*\(|\bos\.(setuid|setgid|seteuid|setegid)\s*\(/i,
     message: "Privilege escalation: setting system user or group IDs programmatically",
   },
 ];
