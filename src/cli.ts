@@ -32,7 +32,7 @@
  *   2  Usage error / target not found
  */
 
-import { scan } from "./scanner.js";
+import { scan, computeRiskScore } from "./scanner.js";
 import { scanGitDiff } from "./diff.js";
 import { reportHuman, reportJson } from "./report.js";
 import { reportSarif } from "./sarif.js";
@@ -380,7 +380,7 @@ async function main(): Promise<void> {
   // ── Full scan mode ─────────────────────────────────────────────────────────
   const opts = parseArgs(process.argv);
   if (!opts) {
-    usage();
+    // parseArgs already printed a specific error message; just exit.
     process.exit(2);
   }
 
@@ -425,9 +425,13 @@ async function main(): Promise<void> {
   }
 
   const minRank = SEVERITY_RANK[cfgMinSeverity];
+  const filteredFindings = result.findings.filter((f) => SEVERITY_RANK[f.severity] >= minRank);
   result = {
     ...result,
-    findings: result.findings.filter((f) => SEVERITY_RANK[f.severity] >= minRank),
+    findings: filteredFindings,
+    // Recompute risk score using only the findings that survive the severity filter
+    // so that --min-severity HIGH doesn't show an inflated score from LOW/MEDIUM findings.
+    riskScore: computeRiskScore(filteredFindings),
   };
 
   if (cfgSarif) {

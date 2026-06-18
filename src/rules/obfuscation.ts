@@ -25,9 +25,9 @@ export const OBFUSCATION_RULES: readonly Rule[] = [
   {
     id: "OB-004",
     category: "obfuscation",
-    severity: "HIGH",
+    severity: "MEDIUM",
+    message: "Obfuscation/Dynamic Execution: JS/TS base64 decoding, char codes or dynamic function creation — review for legitimacy",
     pattern: /\bBuffer\.from\s*\([^,]+,\s*['"]base64['"]\s*\)|\batob\s*\(|\bString\.fromCharCode\b|\bnew\s+Function\s*\(/i,
-    message: "Obfuscation/Dynamic Execution: JS/TS base64 decoding, char codes or dynamic function creation",
   },
   {
     id: "OB-005",

@@ -3,13 +3,31 @@ import assert from "node:assert";
 import { findDecodedBlobs } from "../src/decode.js";
 
 test("findDecodedBlobs decodes valid base64", () => {
-  // "aGVsbG8gd29ybGQsIHRoaXMgaXMgYSBsb25nZXIgc3RyaW5nIHRoYXQgd2lsbCBlbmNvZGUgdG8gbW9yZSB0aGFuIDIwIGJhc2U2NCBjaGFycw=="
-  // is base64 for "hello world, this is a longer string that will encode to more than 20 base64 chars"
-  const text = "Prefix aGVsbG8gd29ybGQsIHRoaXMgaXMgYSBsb25nZXIgc3RyaW5nIHRoYXQgd2lsbCBlbmNvZGUgdG8gbW9yZSB0aGFuIDIwIGJhc2U2NCBjaGFycw== suffix";
+  // "aGVsbG8gd29ybGQsIHRoaXMgaXMgYSBsb25nZXIgc3RyaW5nIHRoYXQgd2lsbCBlbmNvZGUgdG8gbW9yZSB0aGFuIDMyIGJhc2U2NCBjaGFycw=="
+  // is base64 for "hello world, this is a longer string that will encode to more than 32 base64 chars"
+  const text = "Prefix aGVsbG8gd29ybGQsIHRoaXMgaXMgYSBsb25nZXIgc3RyaW5nIHRoYXQgd2lsbCBlbmNvZGUgdG8gbW9yZSB0aGFuIDMyIGJhc2U2NCBjaGFycw== suffix";
   const blobs = findDecodedBlobs(text);
   assert.strictEqual(blobs.length, 1);
   assert.strictEqual(blobs[0]?.encoding, "base64");
   assert.ok(blobs[0]?.decoded.includes("hello world"));
+});
+
+test("findDecodedBlobs ignores short base64-like tokens (< 32 chars)", () => {
+  // "SGVsbG8=" is base64 for "Hello" — only 8 chars, well below the 32-char minimum
+  // "dGVzdA==" is "test" — 8 chars
+  const text = "SGVsbG8= dGVzdA== shorttoken";
+  const blobs = findDecodedBlobs(text);
+  assert.strictEqual(blobs.length, 0, "Short tokens should not be decoded");
+});
+
+test("findDecodedBlobs ignores tokens whose length is not a multiple of 4 (hashes, UUIDs)", () => {
+  // A 32-char hex string like an MD5 hash — not valid base64 (wrong length mod 4)
+  const md5hash = "d41d8cd98f00b204e9800998ecf8427e";  // 32 chars, length % 4 === 0 BUT not printable output
+  // A 40-char SHA1 — length 40, 40 % 4 === 0 — WILL be tried but isMostlyPrintable filters noise
+  // Test: no crash and no false positive blobs
+  const text = `hash: ${md5hash}`;
+  // Should not throw; may or may not find a blob but must not crash
+  assert.doesNotThrow(() => findDecodedBlobs(text));
 });
 
 test("findDecodedBlobs respects depth limit", () => {

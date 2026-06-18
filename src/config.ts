@@ -95,7 +95,22 @@ function parseConfigRaw(raw: unknown, filePath: string): SkillsGuardConfig {
   }
   if ("extraRules" in obj) {
     if (!Array.isArray(obj["extraRules"])) throw new Error(`${filePath}: extraRules must be an array`);
-    cfg.extraRules = obj["extraRules"] as CustomRule[];
+    const extraRules: CustomRule[] = [];
+    for (let i = 0; i < (obj["extraRules"] as unknown[]).length; i++) {
+      const item = (obj["extraRules"] as unknown[])[i];
+      if (typeof item !== "object" || item === null || Array.isArray(item)) {
+        throw new Error(`${filePath}: extraRules[${i}] must be an object`);
+      }
+      const r = item as Record<string, unknown>;
+      if (typeof r["pattern"] !== "string") {
+        throw new Error(`${filePath}: extraRules[${i}].pattern must be a string`);
+      }
+      if ("severity" in r && typeof r["severity"] === "string" && !VALID_SEVERITIES.has(r["severity"].toUpperCase())) {
+        throw new Error(`${filePath}: extraRules[${i}].severity "${r["severity"]}" is not valid`);
+      }
+      extraRules.push(item as CustomRule);
+    }
+    cfg.extraRules = extraRules;
   }
   return cfg;
 }

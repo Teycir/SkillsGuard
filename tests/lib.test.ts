@@ -28,7 +28,7 @@ test("isSafePath permits authorized and rejects dangerous paths", () => {
   assert.strictEqual(isSafePath("/etc/passwd"), false);
   assert.strictEqual(isSafePath(resolve(home, "../../etc/passwd")), false);
   
-  // Sensitive locations
+  // Original sensitive locations
   assert.strictEqual(isSafePath(resolve(home, ".ssh")), false);
   assert.strictEqual(isSafePath(resolve(home, ".ssh/id_rsa")), false);
   assert.strictEqual(isSafePath(resolve(home, ".ssh\\id_rsa")), false);
@@ -37,6 +37,16 @@ test("isSafePath permits authorized and rejects dangerous paths", () => {
   assert.strictEqual(isSafePath(resolve(home, "some_dir\\.bash_history")), false);
   assert.strictEqual(isSafePath(resolve(home, "some_dir/passwd")), false);
   assert.strictEqual(isSafePath(resolve(home, "some_dir\\passwd")), false);
+
+  // Newly added sensitive locations (cloud CLIs, container tooling)
+  assert.strictEqual(isSafePath(resolve(home, ".kube")), false);
+  assert.strictEqual(isSafePath(resolve(home, ".kube/config")), false);
+  assert.strictEqual(isSafePath(resolve(home, ".docker")), false);
+  assert.strictEqual(isSafePath(resolve(home, ".docker/config.json")), false);
+  assert.strictEqual(isSafePath(resolve(home, ".azure")), false);
+  assert.strictEqual(isSafePath(resolve(home, ".terraform.d")), false);
+  assert.strictEqual(isSafePath(resolve(home, "some_dir/vault-token")), false);
+  assert.strictEqual(isSafePath(resolve(home, "some_dir/pgpass")), false);
 });
 
 test("shouldIgnoreLine behaves correctly for inline comments", () => {

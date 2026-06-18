@@ -83,8 +83,11 @@ import type { Server } from "node:http";
 
 /**
  * Starts the HTTP server on the specified port and returns the Server instance.
+ * Binds to 127.0.0.1 (loopback only) to avoid inadvertently exposing the
+ * scanner to other hosts on the local network.
  */
 export function startServer(port: number): Server {
+  const host = "127.0.0.1";
   const server = createServer((req, res) => {
     handleRequest(req, res).catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
@@ -96,10 +99,10 @@ export function startServer(port: number): Server {
     });
   });
 
-  server.listen(port, () => {
-    console.error(`SkillsGuard HTTP server running at http://localhost:${port}/`);
+  server.listen(port, host, () => {
+    console.error(`SkillsGuard HTTP server running at http://${host}:${port}/`);
     console.error(`To scan a skill:`);
-    console.error(`  curl --data-binary @SKILL.md http://localhost:${port}/scan`);
+    console.error(`  curl --data-binary @SKILL.md http://${host}:${port}/scan`);
   });
 
   return server;

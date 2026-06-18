@@ -47,7 +47,11 @@ export const SUPPLY_CHAIN_RULES: readonly Rule[] = [
     id: "SC-007",
     category: "supply-chain",
     severity: "HIGH",
-    pattern: /\b(twittter|githuub|googel|amazonw|npm-install-|nppm|pyypi)\b/i,
-    message: "Supply chain: suspicious lookalike domain or package name (typosquatting)",
+    // Heuristic-only: covers common misspellings of high-value package names and
+    // domain squatting. This list is intentionally limited to patterns with very
+    // low false-positive risk. Extend via --rule or extraRules in config for
+    // domain-specific coverage.
+    pattern: /\b(twittter|githuub|googel|amazonw|npm-install-|nppm|pyypi|reqeusts|boto[^3]|coluud|aiohttp3|fastap1|panda5|matplotli8|sckit-learn|tenserflow|pytorh|pandass|setuptool5)\b/i,
+    message: "Supply chain: suspicious lookalike domain or package name (typosquatting heuristic)",
   },
 ];

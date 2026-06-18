@@ -74,6 +74,11 @@ test("CI-007 catches Node.js child_process invocations", () => {
   assert.ok(r.pattern.test("child_process.execSync('rm -rf /tmp')"));
   assert.ok(r.pattern.test("execSync('dangerous command')"));
   assert.ok(r.pattern.test("spawnSync('sh', ['-c', payload])"));
+  // Should NOT match method calls (regexp.exec, db.exec, pool.spawn, etc.)
+  assert.ok(!r.pattern.test("const m = pattern.exec(line)"));
+  assert.ok(!r.pattern.test("if (re.exec(str)) {"));
+  assert.ok(!r.pattern.test("pool.spawn()"));
+  assert.ok(!r.pattern.test("db.exec(query)"));
 });
 
 test("CI-008 catches Bun.spawn execution (case-insensitive)", () => {

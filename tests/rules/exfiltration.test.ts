@@ -62,9 +62,9 @@ test("EX-007 catches env serialization for exfiltration", () => {
   assert.ok(!r.pattern.test("JSON.stringify({ name: 'alice' })"));
 });
 
-test("EX-008 is LOW severity and matches low-level Node.js calls", () => {
+test("EX-008 is INFO severity and matches low-level Node.js calls", () => {
   const r = rule("EX-008");
-  assert.strictEqual(r.severity, "LOW");
+  assert.strictEqual(r.severity, "INFO");
   assert.ok(r.pattern.test("https.request(options, callback)"));
   assert.ok(r.pattern.test("net.createConnection({ port: 80 })"));
   assert.ok(r.pattern.test("tls.connect(443, 'example.com')"));

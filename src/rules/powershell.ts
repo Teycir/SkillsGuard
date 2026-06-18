@@ -14,7 +14,8 @@ export const POWERSHELL_RULES: readonly Rule[] = [
     id: "PS-001",
     category: "powershell",
     severity: "CRITICAL",
-    pattern: /\bpowershell\b[^#\n]*-[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm][Mm][Aa][Nn][Dd]\b|\bpowershell\b[^#\n]*-[Ee][Nn][Cc]\b/i,
+    // The /i flag makes this case-insensitive; no need for per-character [Ee][Nn][Cc]… expansion.
+    pattern: /\bpowershell\b[^#\n]*-EncodedCommand\b|\bpowershell\b[^#\n]*-Enc\b/i,
     message: "PowerShell: encoded command flag — obfuscated execution",
   },
   {
@@ -94,7 +95,7 @@ export const POWERSHELL_RULES: readonly Rule[] = [
     id: "PS-011",
     category: "powershell",
     severity: "MEDIUM",
-    pattern: /\bSet-ExecutionPolicy\s+(?:Bypass|Unrestricted|RemoteSigned)\b|\bpowershell\b[^#\n]*-[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll][Ii][Cc][Yy]\s+Bypass/i,
+    pattern: /\bSet-ExecutionPolicy\s+(?:Bypass|Unrestricted|RemoteSigned)\b|\bpowershell\b[^#\n]*-ExecutionPolicy\s+Bypass/i,
     message: "PowerShell: execution policy bypassed",
   },
 ];

@@ -47,7 +47,10 @@ export const COMMAND_INJECTION_RULES: readonly Rule[] = [
     id: "CI-007",
     category: "command-injection",
     severity: "HIGH",
-    pattern: /\bchild_process\.(exec|spawn|fork|execFile|execSync|spawnSync|execFileSync)\s*\(|(?<!\.)\b(exec|spawn|fork|execFile|execSync|spawnSync|execFileSync)\s*\(/i,
+    // The second alternative uses a negative lookbehind for `.` so that
+    // method calls like regexp.exec(str), db.exec(query), pool.spawn() are
+    // NOT flagged — only top-level function calls (no receiver) are caught.
+    pattern: /\bchild_process\.(exec|spawn|fork|execFile|execSync|spawnSync|execFileSync)\s*\(|(?<![\w.])\b(exec|spawn|fork|execFile|execSync|spawnSync|execFileSync)\s*\(/i,
     message: "Command execution: Node.js child_process command invocation pattern",
   },
   {

@@ -20,10 +20,15 @@ export function isSafePath(targetPath: string): boolean {
   }
 
   const sensitivePatterns = [
-    /[\/\\]\.(ssh|gnupg|aws|config|gemini|npm|cache|local)\b/,
+    // Credential and config dotdirs — expanded to cover cloud CLIs and container tooling
+    /[\/\\]\.(ssh|gnupg|aws|azure|config|gemini|npm|cache|local|kube|docker|terraform\.d)\b/,
+    // gcloud stores credentials under .config/gcloud but some paths reference it directly
+    /[\/\\]\.gcloud[\/\\]/,
+    // Standalone sensitive dotfiles
     /[\/\\]\.bash_history$/,
     /[\/\\]\.(bashrc|zshrc|profile|bash_profile)$/,
-    /\b(passwd|shadow|git-credentials|npmrc|pypirc|netrc)\b/,
+    // Sensitive filenames that should never be scanned
+    /\b(passwd|shadow|git-credentials|npmrc|pypirc|netrc|vault-token|pgpass)\b/,
   ];
   if (sensitivePatterns.some((pat) => pat.test(resolved))) {
     return false;

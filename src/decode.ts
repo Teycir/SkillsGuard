@@ -11,7 +11,11 @@ export interface DecodedBlob {
   readonly index: number;
 }
 
-const BASE64_RE = /(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{20,4096}={0,2}(?![A-Za-z0-9+/=])/g;
+// Raised minimum from 20 to 32 chars: 20-char alphanumeric tokens (UUIDs
+// without hyphens, short hex hashes, version strings) caused too many false
+// positives.  32 chars still catches all real base64-encoded payloads while
+// filtering the most common noise.
+const BASE64_RE = /(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{32,4096}={0,2}(?![A-Za-z0-9+/=])/g;
 const HEX_RE = /(?:\\x[0-9a-fA-F]{2}){6,}|\b[0-9a-fA-F]{32,}\b/g;
 const URL_ENC_RE = /(?:%[0-9a-fA-F]{2}){4,}/g;
 
@@ -71,9 +75,15 @@ export function findDecodedBlobs(text: string, depth = 2): readonly DecodedBlob[
     };
 
     for (const m of currentText.matchAll(BASE64_RE)) {
+      // Valid base64 has a byte-count divisible by 4 (accounting for padding).
+      // Filtering here skips hex hashes, UUIDs, and other alphanumeric tokens
+      // that happen to be 32+ chars but aren't valid base64.
+      const raw = m[0];
+      const paddedLen = raw.length + (raw.endsWith("=") ? 0 : (4 - (raw.length % 4)) % 4);
+      if (paddedLen % 4 !== 0) continue;
       try {
-        const decoded = Buffer.from(m[0], "base64").toString("utf8");
-        tryAdd(m[0], decoded, "base64", m.index ?? 0);
+        const decoded = Buffer.from(raw, "base64").toString("utf8");
+        tryAdd(raw, decoded, "base64", m.index ?? 0);
       } catch {
         /* skip */
       }

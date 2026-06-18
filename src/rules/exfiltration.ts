@@ -53,7 +53,7 @@ export const EXFILTRATION_RULES: readonly Rule[] = [
   {
     id: "EX-008",
     category: "exfiltration",
-    severity: "LOW",
+    severity: "INFO",
     pattern: /\b(http|https)\.request\s*\(|\bnet\.(createConnection|connect)\s*\(|\btls\.connect\s*\(/i,
     message: "Exfiltration: low-level Node.js network/socket call — review for legitimacy; use skillsguard-ignore: EX-008 to suppress known-good calls",
   },
