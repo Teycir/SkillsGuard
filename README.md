@@ -9,7 +9,7 @@ If SkillsGuard protects your pipeline, consider supporting ongoing research and 
 `0x11282eE5726B3370c8B480e321b3B2aA13686582`
 
 <a href="https://etherscan.io/address/0x11282eE5726B3370c8B480e321b3B2aA13686582">
-  <img src="https://raw.githubusercontent.com/Teycir/ArxivExplorer/main/public/publiceth.svg" alt="Ethereum donation QR code" width="200" />
+  <img src="public/publiceth.svg" alt="Ethereum donation QR code" width="220" />
 </a>
 
 _Scan the QR code or copy the wallet address above._
