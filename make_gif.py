@@ -31,7 +31,7 @@ F_MOTTO  = ImageFont.truetype(MONO_REG,  12)
 
 # ── Content ───────────────────────────────────────────────────────────────────
 TITLE      = "SkillsGuard"
-STATS      = ["[65+ rules]", "[11 categories]", "[zero deps]", "[MCP ready]", "[decode-first]"]
+STATS      = ["[85+ rules]", "[12 categories]", "[zero deps]", "[MCP ready]", "[decode-first]"]
 DESC_TEXT  = "Static security scanner for AI agent skill packages."
 MOTTO_TEXT = '"Audit skills. Trust nothing. Ship safely."'
 CMD_TEXT   = "skillsguard /path/to/skill"
