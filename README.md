@@ -62,13 +62,12 @@ npm install -g skillsguard
 
 # 2. Scan any skill directory or file
 skillsguard /path/to/skill
-
-# 3. (Optional) Register as an MCP server so Claude audits skills automatically
-skillsguard setup
 ```
 
 That's it. SkillsGuard prints color-coded findings to the terminal (or `--json` for CI).  
 Exit code `0` = clean · `1` = findings · `2` = usage error.
+
+Want Claude to call the scanner automatically inside your agent workflow? See [Local Workflow → Path B](#local-workflow) for the full skill + MCP setup.
 
 ---
 
@@ -237,7 +236,9 @@ npm link
 skillsguard /path/to/skills
 ```
 
-### Register as MCP server (for Claude Desktop / Claude Code)
+### Register the MCP server (for Claude Desktop / Claude Code)
+
+`skillsguard setup` registers the `scan_skill` MCP tool in your Claude config so it's available to call:
 
 ```bash
 skillsguard setup
@@ -247,6 +248,8 @@ This writes the `skillsguard` MCP entry into:
 - `~/.config/claude/mcp_config.json` (Claude Code / CLI)
 - `~/Library/Application Support/Claude/claude_desktop_config.json` (Claude Desktop, macOS)
 - `%APPDATA%\Claude\claude_desktop_config.json` (Claude Desktop, Windows)
+
+> **Note:** Registering the MCP server makes the `scan_skill` tool available, but doesn't teach Claude when or how to use it. To have Claude audit skills automatically, also install `skill/SKILL.md` into your agent's skill directory. See [Local Workflow → Path B](#local-workflow) for the complete setup.
 
 ---
 
@@ -677,7 +680,7 @@ If auto-setup doesn't apply to your setup, add this entry manually:
 
 ### How it integrates
 
-Once registered, Claude will call `scan_skill` automatically when it encounters a skill directory — before reading or acting on any skill content. The tool returns a full JSON `ScanResult` inline in the conversation.
+The MCP server exposes the `scan_skill` tool to your Claude environment. On its own, Claude won't call it automatically — the tool is available but Claude has no instruction to use it. To trigger automatic auditing, install `skill/SKILL.md` into your agent's skill directory (see [Local Workflow → Path B](#local-workflow)). With the skill in place, Claude will call `scan_skill` before reading or acting on any skill content, and return a full structured audit report inline in the conversation.
 
 ---
 
