@@ -4,6 +4,8 @@
  *
  * Usage:
  *   skillsguard <target> [options]
+ *   skillsguard install-hook [hook-options]
+ *   skillsguard uninstall-hook [--dry-run]
  *
  * Options:
  *   --json            Output JSON instead of human-readable text
@@ -34,6 +36,7 @@ import type { Severity, ScanResult, CustomRule } from "./types.js";
 import { SEVERITY_RANK } from "./types.js";
 import { runMcpServer } from "./mcp.js";
 import { setupMcp } from "./setup.js";
+import { installHook, uninstallHook } from "./hook.js";
 
 const VALID_SEVERITIES = new Set<string>(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]);
 
@@ -44,6 +47,8 @@ SkillsGuard — static security scanner for AI agent skills
 Usage:
   skillsguard <target> [options]
   skillsguard server [port]
+  skillsguard install-hook [hook-options]
+  skillsguard uninstall-hook [--dry-run]
 
 Arguments:
   <target>            Path to a directory or single file to scan
@@ -67,6 +72,14 @@ Options:
   --no-config         Skip auto-loading skillsguard.config.json
   --help              Show this help and exit
 
+Pre-commit hook options (used with install-hook):
+  --hook-severity <LEVEL>   Minimum severity that blocks the commit (default: HIGH)
+  --hook-max-risk <n>       Block commit if risk score exceeds n [0-100]
+  --hook-exit-zero          Install in report-only mode (never blocks commits)
+  --hook-json               Hook emits JSON output
+  --hook-sarif              Hook emits SARIF output
+  --dry-run                 Print what would be done without writing files
+
 Config file: SkillsGuard auto-loads skillsguard.config.json walking up from
   the target directory. CLI flags override config values. Use --no-config to
   disable. See README for the full schema.
@@ -81,6 +94,9 @@ Examples:
   skillsguard --diff                      # staged files
   skillsguard --diff main                 # changed vs main
   skillsguard --diff HEAD~1 --sarif > out.sarif
+  skillsguard install-hook
+  skillsguard install-hook --hook-severity CRITICAL --hook-max-risk 40
+  skillsguard uninstall-hook
 `.trim());
 }
 
@@ -94,8 +110,6 @@ Examples:
  * The PATTERN segment itself may contain colons, so we only split on the first 4.
  */
 function parseRuleSpec(spec: string): CustomRule | null {
-  // Count leading colon-separated segments. Split at most 4 times so the
-  // remainder (the pattern) can contain colons freely.
   const parts = spec.split(":");
   if (parts.length >= 5) {
     const [id, sev, cat, msg, ...rest] = parts;
@@ -113,7 +127,6 @@ function parseRuleSpec(spec: string): CustomRule | null {
       pattern,
     };
   }
-  // Bare pattern — no colons as delimiters
   return { pattern: spec };
 }
 
@@ -129,17 +142,17 @@ function parseArgs(argv: string[]): {
   rulesOnly: boolean;
   noConfig: boolean;
 } | null {
-  const args = argv.slice(2); // drop 'node' and script path
+  const args = argv.slice(2);
 
   if (args.includes("--help") || args.includes("-h")) {
     usage();
     process.exit(0);
   }
 
-  const json     = args.includes("--json");
-  const sarif    = args.includes("--sarif");
-  const noColor  = args.includes("--no-color") || !process.stdout.isTTY;
-  const exitZero = args.includes("--exit-zero");
+  const json      = args.includes("--json");
+  const sarif     = args.includes("--sarif");
+  const noColor   = args.includes("--no-color") || !process.stdout.isTTY;
+  const exitZero  = args.includes("--exit-zero");
   const rulesOnly = args.includes("--rules-only");
   const noConfig  = args.includes("--no-config");
 
@@ -170,7 +183,6 @@ function parseArgs(argv: string[]): {
     maxRisk = val;
   }
 
-  // Collect all --rule <spec> occurrences
   const extraRules: CustomRule[] = [];
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--rule") {
@@ -182,7 +194,7 @@ function parseArgs(argv: string[]): {
       const rule = parseRuleSpec(spec);
       if (!rule) return null;
       extraRules.push(rule);
-      i++; // skip the value token
+      i++;
     }
   }
 
@@ -191,13 +203,12 @@ function parseArgs(argv: string[]): {
     return null;
   }
 
-  // Positional args: skip flag values (tokens that follow a known flag)
   const flagsWithValues = new Set(["--min-severity", "--port", "--rule", "--max-risk"]);
   const positionals: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const a = args[i]!;
     if (flagsWithValues.has(a)) {
-      i++; // skip value
+      i++;
     } else if (!a.startsWith("--")) {
       positionals.push(a);
     }
@@ -217,15 +228,18 @@ function parseArgs(argv: string[]): {
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
+
   if (args.includes("--mcp")) {
     await runMcpServer();
     return;
   }
+
   if (args.includes("setup") || args.includes("--setup")) {
     const dryRun = args.includes("--dry-run");
     setupMcp(dryRun);
     return;
   }
+
   if (args.includes("--server") || args.includes("server")) {
     const portIdx = args.indexOf("--port");
     let port = 3000;
@@ -244,15 +258,93 @@ async function main(): Promise<void> {
     return;
   }
 
-  // ── Git diff mode ───────────────────────────────────────────────────────────
+  // ── Pre-commit hook install ────────────────────────────────────────────────
+  if (args.includes("install-hook")) {
+    const dryRun = args.includes("--dry-run");
+
+    let hookSeverity: Severity = "HIGH";
+    const hookSevIdx = args.indexOf("--hook-severity");
+    if (hookSevIdx !== -1) {
+      const val = args[hookSevIdx + 1]?.toUpperCase();
+      if (!val || !VALID_SEVERITIES.has(val)) {
+        console.error("Error: --hook-severity must be one of: CRITICAL HIGH MEDIUM LOW INFO");
+        process.exit(2);
+      }
+      hookSeverity = val as Severity;
+    }
+
+    let hookMaxRisk: number | undefined;
+    const hookRiskIdx = args.indexOf("--hook-max-risk");
+    if (hookRiskIdx !== -1) {
+      const val = Number(args[hookRiskIdx + 1]);
+      if (isNaN(val) || val < 0 || val > 100) {
+        console.error("Error: --hook-max-risk must be a number between 0 and 100");
+        process.exit(2);
+      }
+      hookMaxRisk = val;
+    }
+
+    const hookExitZero = args.includes("--hook-exit-zero");
+    const hookJson     = args.includes("--hook-json");
+    const hookSarif    = args.includes("--hook-sarif");
+
+    if (hookJson && hookSarif) {
+      console.error("Error: --hook-json and --hook-sarif are mutually exclusive");
+      process.exit(2);
+    }
+
+    try {
+      console.log("\nSkillsGuard — installing pre-commit hook");
+      const res = await installHook({
+        minSeverity: hookSeverity,
+        maxRisk:     hookMaxRisk,
+        exitZero:    hookExitZero,
+        json:        hookJson,
+        sarif:       hookSarif,
+        dryRun,
+      });
+
+      if (!dryRun) {
+        const action = res.created ? "Installed" : "Updated";
+        console.log(`  ${action}: ${res.hookPath}`);
+        if (res.backupPath) console.log(`  Previous hook backed up to: ${res.backupPath}`);
+        console.log("");
+        const riskPart = hookMaxRisk != null ? ` --max-risk ${hookMaxRisk}` : "";
+        const zeroPart = hookExitZero ? " --exit-zero" : "";
+        console.log(`  Every commit will now run:`);
+        console.log(`    skillsguard --diff --staged --min-severity ${hookSeverity}${riskPart}${zeroPart}`);
+        console.log("");
+        console.log("  To remove:  skillsguard uninstall-hook");
+      }
+    } catch (err: unknown) {
+      console.error(`Error: ${String(err)}`);
+      process.exit(2);
+    }
+    return;
+  }
+
+  // ── Pre-commit hook uninstall ──────────────────────────────────────────────
+  if (args.includes("uninstall-hook")) {
+    const dryRun = args.includes("--dry-run");
+    try {
+      console.log("\nSkillsGuard — removing pre-commit hook");
+      const removed = await uninstallHook({ dryRun });
+      if (!removed && !dryRun) process.exit(1);
+    } catch (err: unknown) {
+      console.error(`Error: ${String(err)}`);
+      process.exit(2);
+    }
+    return;
+  }
+
+  // ── Git diff mode ──────────────────────────────────────────────────────────
   if (args.includes("--diff")) {
     const diffIdx = args.indexOf("--diff");
     const nextArg = args[diffIdx + 1];
-    // base ref is the token after --diff if it doesn't start with '--'
-    const base = nextArg && !nextArg.startsWith("--") ? nextArg : undefined;
-    const staged = args.includes("--staged");
-    const json   = args.includes("--json");
-    const sarif  = args.includes("--sarif");
+    const base    = nextArg && !nextArg.startsWith("--") ? nextArg : undefined;
+    const staged  = args.includes("--staged");
+    const json    = args.includes("--json");
+    const sarif   = args.includes("--sarif");
     const noColor = args.includes("--no-color") || !process.stdout.isTTY;
     try {
       const result = await scanGitDiff({ base, staged });
@@ -274,27 +366,26 @@ async function main(): Promise<void> {
     return;
   }
 
+  // ── Full scan mode ─────────────────────────────────────────────────────────
   const opts = parseArgs(process.argv);
   if (!opts) {
     usage();
     process.exit(2);
   }
 
-  // ── Load config (unless suppressed) ────────────────────────────────────────
-  let cfgMinSeverity: Severity      = opts.minSeverity;
-  let cfgExitZero: boolean           = opts.exitZero;
-  let cfgSarif: boolean              = opts.sarif;
-  let cfgNoColor: boolean            = opts.noColor;
-  let cfgMaxRisk: number | null      = opts.maxRisk;
-  let cfgIgnoreRules: string[]       = [];
-  let cfgExtraRules: CustomRule[]    = opts.extraRules;
-  let cfgRulesOnly: boolean          = opts.rulesOnly;
+  let cfgMinSeverity: Severity   = opts.minSeverity;
+  let cfgExitZero: boolean        = opts.exitZero;
+  let cfgSarif: boolean           = opts.sarif;
+  let cfgNoColor: boolean         = opts.noColor;
+  let cfgMaxRisk: number | null   = opts.maxRisk;
+  let cfgIgnoreRules: string[]    = [];
+  let cfgExtraRules: CustomRule[] = opts.extraRules;
+  let cfgRulesOnly: boolean       = opts.rulesOnly;
 
   if (!opts.noConfig) {
     try {
       const fileConfig = await loadConfig(opts.target);
       if (fileConfig) {
-        // Config file sets defaults; CLI flags override
         if (fileConfig.minSeverity  && !process.argv.includes("--min-severity")) cfgMinSeverity = fileConfig.minSeverity;
         if (fileConfig.exitZero     && !process.argv.includes("--exit-zero"))    cfgExitZero    = fileConfig.exitZero;
         if (fileConfig.sarif        && !process.argv.includes("--sarif"))        cfgSarif       = fileConfig.sarif;
@@ -302,7 +393,6 @@ async function main(): Promise<void> {
         if (fileConfig.maxRiskScore != null && !process.argv.includes("--max-risk")) cfgMaxRisk = fileConfig.maxRiskScore;
         if (fileConfig.rulesOnly    && !process.argv.includes("--rules-only"))   cfgRulesOnly   = fileConfig.rulesOnly;
         if (fileConfig.ignoreRules) cfgIgnoreRules = fileConfig.ignoreRules;
-        // Merge config extraRules BEFORE cli extraRules (cli takes precedence by appearing last)
         if (fileConfig.extraRules?.length) cfgExtraRules = [...fileConfig.extraRules, ...opts.extraRules];
       }
     } catch (err: unknown) {
@@ -310,13 +400,12 @@ async function main(): Promise<void> {
     }
   }
 
-  // ── Scan ───────────────────────────────────────────────────────────────────
   let result: ScanResult;
   try {
     result = await scan(opts.target, {
-      extraRules: cfgExtraRules.length > 0 ? cfgExtraRules : undefined,
-      rulesOnly: cfgRulesOnly,
-      ignoreRules: cfgIgnoreRules.length > 0 ? cfgIgnoreRules : undefined,
+      extraRules:   cfgExtraRules.length > 0  ? cfgExtraRules   : undefined,
+      rulesOnly:    cfgRulesOnly,
+      ignoreRules:  cfgIgnoreRules.length > 0 ? cfgIgnoreRules  : undefined,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -324,14 +413,12 @@ async function main(): Promise<void> {
     process.exit(2);
   }
 
-  // ── Filter by minimum severity ─────────────────────────────────────────────
   const minRank = SEVERITY_RANK[cfgMinSeverity];
   result = {
     ...result,
     findings: result.findings.filter((f) => SEVERITY_RANK[f.severity] >= minRank),
   };
 
-  // ── Report ─────────────────────────────────────────────────────────────────
   if (cfgSarif) {
     reportSarif(result);
   } else if (opts.json) {
@@ -340,7 +427,6 @@ async function main(): Promise<void> {
     reportHuman(result, cfgNoColor);
   }
 
-  // ── Exit code ──────────────────────────────────────────────────────────────
   if (!cfgExitZero) {
     if (result.findings.length > 0) process.exit(1);
     if (cfgMaxRisk !== null && result.riskScore.score > cfgMaxRisk) {
