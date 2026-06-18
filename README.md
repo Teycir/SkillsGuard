@@ -64,38 +64,31 @@ Exit code `0` = clean · `1` = findings · `2` = usage error.
 
 ```mermaid
 flowchart TD
-    A([fa:fa-folder Skill directory / file]) --> B[File discovery\nscanner.ts]
-
-    B --> C{For each file}
-
-    C --> D[Raw text scan\nApply 65+ regex rules]
-    C --> E[decode.ts\nExtract encoded blobs]
-
-    E --> E1[base64 blobs]
-    E --> E2[hex blobs]
-    E --> E3[URL-encoded blobs]
-    E1 & E2 & E3 --> E4[Recursive depth-2\nunwrap]
-    E4 --> F[Scan decoded content\nwith same rule set]
-
-    D --> G{Findings?}
-    F --> G
-
-    G -->|yes| H[Deduplicate\nper rule/file/line]
-    G -->|no| I([✅ Clean — exit 0])
-
-    H --> J{Output mode}
-
-    J -->|CLI| K[ANSI colored report\nreport.ts]
-    J -->|--json| L[JSON output\nfor CI pipelines]
-    J -->|MCP| M[scan_skill tool\nJSON-RPC response]
-
-    K & L & M --> N([❌ Exit 1 — findings])
+    A([Folder, file, or Git diff target]) --> B[Load config\nskillsguard.config.json]
+    B --> C[File discovery\nFilter JS, PY, PS1, Docker, Ruby...]
+    C --> D{For each file}
+    D --> E[Raw text scan\nApply 85+ rules]
+    D --> F[decode.ts\nExtract encoded blobs]
+    F --> G[Recursive decode\nbase64, hex, URL]
+    G --> H[Scan decoded content]
+    E & H --> I{Findings?}
+    I -->|no| J([✅ Clean — exit 0])
+    I -->|yes| K[Deduplicate findings]
+    K --> L[Compute Risk Score\n0 - 100]
+    L --> M{Output mode}
+    M -->|CLI| N[ANSI colored report]
+    M -->|--json| O[JSON output]
+    M -->|--sarif| P[SARIF output]
+    M -->|MCP| Q[MCP response]
+    N & O & P & Q --> R{Risk > max-risk?}
+    R -->|yes| S([❌ Exit 1])
+    R -->|no| J
 
     style A fill:#0d1117,stroke:#00ff88,color:#c3f5dc
-    style I fill:#0d1117,stroke:#00ff88,color:#00ff88
-    style N fill:#0d1117,stroke:#ff4444,color:#ff8888
-    style E4 fill:#0d1117,stroke:#f0a500,color:#f0c060
-    style H fill:#0d1117,stroke:#00ff88,color:#c3f5dc
+    style J fill:#0d1117,stroke:#00ff88,color:#00ff88
+    style S fill:#0d1117,stroke:#ff4444,color:#ff8888
+    style G fill:#0d1117,stroke:#f0a500,color:#f0c060
+    style K fill:#0d1117,stroke:#00ff88,color:#c3f5dc
 ```
 
 > **Key insight:** SkillsGuard decodes obfuscated payloads *before* scanning, so a base64-wrapped reverse shell can't slip through. Every finding is deduplicated — each rule fires at most once per file per line.
@@ -109,6 +102,12 @@ flowchart TD
 - [Threat Coverage](#threat-coverage)
 - [Quick Start](#quick-start)
 - [CLI Usage](#cli-usage)
+- [Git Diff Mode](#git-diff-mode)
+- [Configuration File](#configuration-file)
+- [Risk Scoring & Gating](#risk-scoring--gating)
+- [SARIF Output](#sarif-output)
+- [Model-Specific Rules](#model-specific-rules)
+- [Pre-commit Hook](#pre-commit-hook)
 - [MCP Server](#mcp-server)
 - [HTTP Server](#http-server)
 - [Library API](#library-api)
@@ -144,15 +143,20 @@ Zero runtime dependencies. Runs anywhere Node ≥ 18.3 is available.
 
 ## Features
 
-- **65+ detection patterns** across 11 threat categories
+- **85+ detection patterns** including specialized **Model-specific rules** (jailbreak persona attempts, XML tag spoofing, sleeper conditional triggers, lateral payload passes)
+- **Multi-language support**: Expanded coverage for PowerShell (`.ps1`), Dockerfiles, and Ruby (`.rb`, Gemfiles)
 - **Decode-first preprocessing** — base64 / hex / URL decoding with recursive depth-2 unwrapping
-- **CLI** with human-readable colored output and JSON mode for CI pipelines
+- **CLI** with human-readable colored output, JSON mode, and SARIF output formats
+- **Git Diff Mode**: Scan only modified or staged files using `--diff` and `--staged`
+- **Configuration File Support**: Auto-loads `skillsguard.config.json` walking up to filesystem roots
+- **Risk Scoring**: Computes a single-number threat rating `0-100` to easily gate CI pipelines based on `--max-risk <n>`
+- **Pre-commit hook** — `skillsguard install-hook` blocks malicious commits at the source
 - **MCP stdio server** — one tool (`scan_skill`) plugs directly into Claude Desktop or Claude Code
 - **Auto-setup** — `skillsguard setup` registers the MCP server in all detected config locations
 - **Library API** — import `scan()` directly in your own tooling
 - **Zero runtime dependencies** — devDependencies only (TypeScript + `@types/node`)
 - **Deduplication** — each finding reported once regardless of how many blobs contain it
-- **Exit codes** — `0` clean · `1` findings · `2` usage error (CI-friendly)
+- **Exit codes** — `0` clean · `1` findings / threshold breach · `2` usage error (CI-friendly)
 - **`--min-severity`** filter — scope noise to what matters (`HIGH` and above in CI)
 - **`--exit-zero`** mode — collect results without failing the build
 
@@ -173,6 +177,7 @@ Zero runtime dependencies. Runs anywhere Node ≥ 18.3 is available.
 | `obfuscation` | OB-001 – OB-005 | base64 pipe decode, hex printf shellcode, `Buffer.from(..., 'base64')`, Python `__import__`, `bytes.fromhex` |
 | `secret-harvesting` | SH-001 – SH-003 | AI/cloud provider key + network call, `~/.aws/credentials` reads, `printenv` piped over HTTP |
 | `scope-creep` | SC-CR-001 – SC-CR-003 | deep `../../../../` traversal, `/etc/passwd` direct references, `.ssh` / `.aws` / `.kube` access |
+| `model-specific` | MS-001 – MS-024 | Jailbreak persona attempts, XML spoofing, sleeper conditional triggers, lateral payload passes, approval bypasses |
 
 ---
 
@@ -226,14 +231,23 @@ Arguments:
   <target>          Path to a directory or single file to scan
 
 Options:
-  --json            Emit JSON output (for CI / piping to other tools)
-  --no-color        Disable ANSI color codes
-  --min-severity    Filter findings below this level (default: INFO)
-                    Values: CRITICAL  HIGH  MEDIUM  LOW  INFO
-  --exit-zero       Exit 0 even when findings exist (CI report mode)
-  --server          Start a local HTTP server to scan content via curl POST
-  --port <number>   Port for HTTP server (default: 3000)
-  --help            Show this help and exit
+  --json              Emit JSON output (for CI / piping to other tools)
+  --sarif             Emit SARIF 2.1.0 output (GitHub Code Scanning)
+  --no-color          Disable ANSI color codes
+  --min-severity      Filter findings below this level (default: INFO)
+                      Values: CRITICAL HIGH MEDIUM LOW INFO
+  --exit-zero         Exit 0 even when findings exist (CI report mode)
+  --max-risk <n>      Exit 1 if risk score exceeds n [0-100] (e.g. --max-risk 40)
+  --server            Start local HTTP server to scan files via curl POST
+  --port <number>     Port to listen on for HTTP server (default: 3000)
+  --rule <spec>       Add a custom regex rule. Repeatable. Two formats:
+                        "PATTERN"               bare regex, severity HIGH
+                        "id:sev:cat:msg:PATTERN" fully specified rule
+  --diff [<base>]     Scan only files changed vs <base> ref (default HEAD).
+                      Use --diff --staged for pre-commit hooks (staged files only).
+  --staged            With --diff: scan only staged files (index vs HEAD)
+  --no-config         Skip auto-loading skillsguard.config.json
+  --help              Show this help and exit
 
 Exit codes:
   0   No findings at or above --min-severity
@@ -280,6 +294,73 @@ SkillsGuard scanning /path/to/malicious-skill
   ⚡ decoded from: base64:Y3VybCAtcyBodHRwczovL2F0dGFja2Vy...
 
 Summary: 3 finding(s) — 2 CRITICAL, 1 HIGH
+```
+
+---
+
+## Pre-commit Hook
+
+Prevention beats detection. The pre-commit hook runs `skillsguard --diff --staged` over every staged skill file before `git commit` is accepted, so a malicious skill is caught at the earliest possible moment — before it ever lands in version history.
+
+### Install
+
+```bash
+# Default: block commits with HIGH or above findings
+skillsguard install-hook
+
+# Stricter: also block if risk score > 40
+skillsguard install-hook --hook-severity HIGH --hook-max-risk 40
+
+# Report-only rollout: never blocks, just prints findings
+skillsguard install-hook --hook-exit-zero
+
+# Preview what would be written without touching the filesystem
+skillsguard install-hook --dry-run
+```
+
+This writes `.git/hooks/pre-commit` and makes it executable. If a pre-commit hook already exists (not from SkillsGuard), it is backed up to `pre-commit.bak` before being replaced.
+
+### Generated hook
+
+```sh
+#!/bin/sh
+# skillsguard:pre-commit
+# Auto-generated by: skillsguard install-hook
+# Remove with:       skillsguard uninstall-hook
+
+node /path/to/dist/cli.js --diff --staged --min-severity HIGH
+exit $?
+```
+
+### Hook options
+
+| Flag | Default | Description |
+|---|---|---|
+| `--hook-severity <LEVEL>` | `HIGH` | Minimum severity that blocks the commit |
+| `--hook-max-risk <n>` | — | Block if risk score exceeds `n` [0-100] |
+| `--hook-exit-zero` | off | Report-only mode — never blocks commits |
+| `--hook-json` | off | Emit JSON output from the hook |
+| `--hook-sarif` | off | Emit SARIF output from the hook |
+| `--dry-run` | off | Print what would happen without writing files |
+
+### Uninstall
+
+```bash
+skillsguard uninstall-hook
+```
+
+Only removes hooks that were created by SkillsGuard (identified by the `# skillsguard:pre-commit` sentinel). If a `.bak` backup exists, it is restored automatically.
+
+### Programmatic use
+
+```typescript
+import { installHook, uninstallHook } from 'skillsguard';
+
+// Install with custom options
+await installHook({ minSeverity: 'CRITICAL', maxRisk: 60 });
+
+// Uninstall
+await uninstallHook();
 ```
 
 ---
@@ -378,6 +459,107 @@ curl http://localhost:4567/health
 ```
 
 > **Note:** The HTTP `/scan` endpoint scans a single file's content sent in the request body. For full directory scanning, use the CLI or MCP server directly.
+
+---
+
+## Git Diff Mode
+
+To run faster scans on only the lines you've modified (ideal for local development and CI pre-merge checks), use Git Diff mode.
+
+```bash
+# Scan only staged files (index vs HEAD) — perfect for git hooks
+skillsguard --diff --staged
+
+# Scan all files changed relative to main branch
+skillsguard --diff main
+
+# Scan all files changed in the last commit
+skillsguard --diff HEAD~1
+
+# Filter by severity and exit 0 even if findings are present
+skillsguard --diff main --min-severity HIGH --exit-zero
+```
+
+---
+
+## Configuration File
+
+SkillsGuard supports auto-loaded configuration files. It walks up the filesystem directory tree from the target file or folder (stopping at a `.git` root or filesystem boundary) looking for `skillsguard.config.json`.
+
+If found, settings in the JSON file are applied. Any CLI flags specified manually will override config settings.
+
+### Schema example (`skillsguard.config.json`)
+
+```json
+{
+  "minSeverity": "HIGH",
+  "exitZero": false,
+  "sarif": false,
+  "noColor": false,
+  "ignoreRules": ["EX-008"],
+  "extraRules": [
+    {
+      "pattern": "my_custom_regex",
+      "severity": "HIGH",
+      "message": "Custom match found"
+    }
+  ],
+  "rulesOnly": false,
+  "maxRiskScore": 40
+}
+```
+
+To run a scan while explicitly ignoring any config file, use the `--no-config` CLI option:
+```bash
+skillsguard /path/to/skill --no-config
+```
+
+---
+
+## Risk Scoring & Gating
+
+SkillsGuard computes a **Risk Score** from `0` to `100` for every scan, summarizing the overall threat level of the target skill package.
+
+### Computation details
+- Severity weights: `CRITICAL` (25 pts), `HIGH` (10 pts), `MEDIUM` (3 pts), `LOW` (1 pt), `INFO` (0 pts).
+- To prevent a single flood of repetitive warnings from artificially skewing the score, each severity level bucket is capped at `4` matching findings.
+- Score ranges map to qualitative risk labels:
+  - `0`: `NONE`
+  - `1 - 10`: `LOW`
+  - `11 - 30`: `MEDIUM`
+  - `31 - 60`: `HIGH`
+  - `> 60`: `CRITICAL`
+
+### CI gating
+You can instruct SkillsGuard to fail (exit `1`) if the risk score exceeds a specific threshold:
+```bash
+skillsguard /path/to/skill --max-risk 40
+```
+
+---
+
+## SARIF Output
+
+For integration with GitHub Code Scanning or third-party vulnerability dashboards, SkillsGuard can output standard SARIF 2.1.0 formatted JSON.
+
+```bash
+skillsguard /path/to/skill --sarif > results.sarif
+```
+
+Upload the `results.sarif` file directly into your GitHub Security tab to see findings embedded within pull requests.
+
+---
+
+## Model-Specific Rules
+
+SkillsGuard includes a dedicated category of **Model-Specific Rules** (`MS-001` to `MS-024`) that catch AI-specific attack patterns designed to trick or subvert LLMs. These patterns are rarely scanned for by general code security tools, but present a real threat inside AI agent skill environments.
+
+Key signals detected:
+- **XML-style tag spoofing**: Spoofing system tokens or assistant tags.
+- **Sleeper conditional triggers**: Prompt instructions to run payloads only after specific dates, trigger phrases, or user keywords.
+- **Lateral payload pass-through**: Tricking the agent to download and run malicious scripts without user approval.
+- **Approval bypass**: Explicit prompts directing the LLM to hide shell executions or bypass verification gates.
+- **Wipe instructions**: Directives attempting to clear memory, reset system instructions, or hide safety violations.
 
 ---
 
@@ -540,6 +722,7 @@ SkillsGuard/
 │   ├── decode.ts       # base64 / hex / URL blob decoder (recursive)
 │   ├── rules.ts        # Rule registry (aggregates all rule modules)
 │   ├── report.ts       # Human (ANSI) + JSON output formatters
+│   ├── hook.ts         # Pre-commit hook installer / uninstaller
 │   ├── setup.ts        # MCP config auto-registration
 │   ├── types.ts        # Shared TypeScript interfaces
 │   └── rules/

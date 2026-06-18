@@ -16,6 +16,8 @@ export type { Rule, Finding, ScanResult, Severity, CustomRule, ScanOptions, Risk
 export type { SkillsGuardConfig } from "./config.js";
 export type { GitDiffOptions } from "./diff.js";
 export { setupMcp } from "./setup.js";
+export { installHook, uninstallHook } from "./hook.js";
+export type { HookOptions, HookResult } from "./hook.js";
 export { isSafePath } from "./lib/path.js";
 export { shouldIgnoreLine } from "./lib/ignore.js";
 export { runConcurrent } from "./lib/concurrency.js";
