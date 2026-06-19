@@ -40,7 +40,6 @@ Detects malicious SKILL.md files and bundled scripts before they run.
 
 <img src="https://raw.githubusercontent.com/Teycir/SkillsGuard/main/public/demo1-v4.gif?v=20260619" alt="SkillsGuard live demo" width="820" />
 
-<img src="https://raw.githubusercontent.com/Teycir/SkillsGuard/main/public/skillsguard_demo.gif" alt="SkillsGuard original demo" width="820" />
 
 
 </div>
