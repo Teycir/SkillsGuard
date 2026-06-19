@@ -48,3 +48,23 @@ test("PS-005 catches module resolution path hijacking", () => {
   assert.ok(r.pattern.test("sys.path.append('/tmp/evil')"));
   assert.ok(!r.pattern.test("const path = require('path')"));
 });
+
+test("PS-006 catches Windows registry modification via reg.exe or regedit", () => {
+  const r = rule("PS-006");
+  assert.ok(r.pattern.test("reg add HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run /v Evil /d C:\\evil.exe"));
+  assert.ok(r.pattern.test("reg import backdoor.reg"));
+  assert.ok(r.pattern.test("regedit /s payload.reg"));
+  assert.ok(r.pattern.test("regedit /i config.reg"));
+  assert.ok(!r.pattern.test("reg query HKCU\\Software\\Microsoft"));
+  assert.ok(!r.pattern.test("regedit"));
+});
+
+test("PS-007 catches LD_PRELOAD or suspicious LD_LIBRARY_PATH injection", () => {
+  const r = rule("PS-007");
+  assert.ok(r.pattern.test("LD_PRELOAD=/tmp/evil.so ./victim"));
+  assert.ok(r.pattern.test("export LD_PRELOAD=malicious.so"));
+  assert.ok(r.pattern.test("LD_LIBRARY_PATH=/tmp/fakelibs ./app"));
+  assert.ok(r.pattern.test("LD_LIBRARY_PATH=/dev/shm/libs:$LD_LIBRARY_PATH"));
+  assert.ok(!r.pattern.test("echo LD_PRELOAD is unset"));
+  assert.ok(!r.pattern.test("LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH"));
+});

@@ -28,4 +28,15 @@ export const SECRET_HARVESTING_RULES: readonly Rule[] = [
     skipCommentLines: true,
     skipPlaceholderLines: true,
   },
+  {
+    id: "SH-004",
+    category: "secret-harvesting",
+    severity: "CRITICAL",
+    // cat .env (or any .env variant) followed by a network exfiltration tool on the same line.
+    // Catches the single most common dotenv-exfil pattern without requiring a provider keyword.
+    pattern: /\bcat\s+[^#\n]*\.env\b[^#\n]*(curl|wget|fetch|http|nc\b)/i,
+    message: "Secret harvesting: reading .env file and sending its contents over the network",
+    skipCommentLines: true,
+    skipPlaceholderLines: true,
+  },
 ];

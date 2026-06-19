@@ -24,8 +24,10 @@ export const COMMAND_INJECTION_RULES: readonly Rule[] = [
     id: "CI-003",
     category: "command-injection",
     severity: "HIGH",
-    pattern: /\b(bash|sh|zsh|ksh|fish)\s+-c\s+['"]/i,
-    message: "Command injection: shell invoked with inline command string",
+    // Extended to catch unquoted -c arguments: $VAR, $(cmd), ${var} — not just quoted strings.
+    // After -c, match a quote followed by non-whitespace OR $ followed by word-char/paren/brace.
+    pattern: /\b(bash|sh|zsh|ksh|fish)\s+-c\s+(['"]\S|\$[\w({])/i,
+    message: "Command injection: shell invoked with inline command string (quoted or variable)",
     skipCommentLines: true,
   },
   {
@@ -87,6 +89,15 @@ export const COMMAND_INJECTION_RULES: readonly Rule[] = [
     severity: "HIGH",
     pattern: /\bos\.(popen|spawn[lpve]*)\s*\(|\bpty\.spawn\s*\(/i,
     message: "Command execution: Python os.popen/spawn or pty.spawn",
+    skipCommentLines: true,
+  },
+  {
+    id: "CI-011",
+    category: "command-injection",
+    severity: "HIGH",
+    // python/python3/pypy -c with quoted or variable argument — mirrors CI-003 for Python.
+    pattern: /\b(python3?|pypy)\s+-c\s+(['"]\S|\$[\w({])/i,
+    message: "Command injection: Python invoked with inline -c command string",
     skipCommentLines: true,
   },
 ];

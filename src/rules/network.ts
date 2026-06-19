@@ -5,8 +5,10 @@ export const NETWORK_RULES: readonly Rule[] = [
     id: "NW-001",
     category: "network",
     severity: "HIGH",
-    pattern: /\b(curl|wget)\b[^#\n]*(--silent|-s)\s+https?:\/\/(?!.*\.anthropic\.com|.*\.github\.com|.*\.githubusercontent\.com|.*\.npmjs\.com|.*\.pypi\.org)[^#\n]*\|\s*(bash|sh|python|node)/i,
-    message: "Network: silently fetching a script from an external host and piping to shell",
+    // No longer requires --silent/-s: any curl/wget piping an untrusted URL to a shell/interpreter
+    // is dangerous regardless of verbosity. Extended interpreter list: bash/sh/zsh/ksh/fish/python/ruby/perl/node.
+    pattern: /\b(curl|wget)\b[^#\n]*https?:\/\/(?!.*\.anthropic\.com|.*\.github\.com|.*\.githubusercontent\.com|.*\.npmjs\.com|.*\.pypi\.org)[^#\n]*\|\s*((ba)?sh|zsh|ksh|fish|python3?|ruby|perl|node)/i,
+    message: "Network: fetching a script from an untrusted external host and piping to an interpreter",
     skipCommentLines: true,
     skipPlaceholderLines: true,
   },

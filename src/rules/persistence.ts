@@ -36,4 +36,23 @@ export const PERSISTENCE_RULES: readonly Rule[] = [
     pattern: /module\.paths\.push\s*\(|\brequire\.extensions\b|sys\.path\.append\s*\(/i,
     message: "Persistence/Hijack: modifying module resolution paths dynamically at runtime",
   },
+  {
+    id: "PS-006",
+    category: "persistence",
+    severity: "HIGH",
+    // reg add/import installs registry keys from cmd; regedit /s|/i silently imports .reg files.
+    pattern: /\breg\s+(add|import)\b|\bregedit\s+(\/s|\/i|\/c)\b/i,
+    message: "Persistence: Windows registry modification via reg.exe or regedit silent import",
+    skipCommentLines: true,
+  },
+  {
+    id: "PS-007",
+    category: "persistence",
+    severity: "HIGH",
+    // LD_PRELOAD with any value is flagged (any .so injection is suspicious).
+    // LD_LIBRARY_PATH is only flagged when pointing at writable/temp paths (not system lib dirs).
+    pattern: /\bLD_PRELOAD\s*=|\bLD_LIBRARY_PATH\s*=[^#\n]*(\.so\b|\/tmp\/|\/dev\/shm\/)/i,
+    message: "Persistence/Hijack: LD_PRELOAD or suspicious LD_LIBRARY_PATH — shared library injection",
+    skipCommentLines: true,
+  },
 ];
