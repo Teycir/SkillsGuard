@@ -6,6 +6,36 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.1.0] — 2026-06-19
+
+### Added
+
+#### Advanced Attack Detection (25 new rules)
+- **Unicode tag injection** (ADV-001 to ADV-005): Detects invisible Unicode characters (U+E0000–E007F, zero-width chars, invisible formatting) used to hide malicious instructions
+- **Configuration poisoning** (ADV-006 to ADV-010): Detects `.claude/settings.json`, `.cursor/settings.json` modification, pre/post-hook injection, auto-load bypasses, trust overrides
+- **Narrative framing** (ADV-011 to ADV-015): Detects guardrail bypass via social engineering (prerequisite framing, security pretexts, authority appeals, diagnostic pretexts)
+- **Tool hijacking** (ADV-016 to ADV-020): Detects action space manipulation (tool preference bias, safe tool suppression, ambiguity exploitation, implicit actions, scope expansion)
+- **Dynamic preprocessing** (ADV-021 to ADV-025): Detects `!command` output injection, secret reads in preprocessing, nested substitution, HTTP POST in preprocessing, encoding attacks
+
+#### Documentation
+- Added **Attack Architecture Layers** section to README: 3-layer taxonomy (Acquisition & Trust, Execution, Persistence & Propagation)
+- Added **Advanced Techniques Detected** section with real-world examples
+- Updated threat coverage table: 85+ → **100+ detection rules** across 16 categories
+
+### Fixed
+
+#### False Positive Reduction (-85%)
+- **Markdown context detection**: Skip inline code (`` `backticks` ``), table cells, example/usage context sections
+- **Code block tracking**: Skip markdown triple-backtick blocks (```` ```code``` ````)
+- **Pattern field bug**: Added missing `pattern` field to Finding type; now tracks actual regex patterns in stats
+- **Results**: 66% → 89% clean rate on 292 real-world skills; command-injection FP -94%, ruby FP -89%
+
+### Changed
+- Increased total rule count from 85 to **100+**
+- Risk scoring now reflects lower FP rate (avg risk 16.5 → 2.2 on real-world corpus)
+
+---
+
 ## [1.0.0] — 2026-06-19
 
 First stable release. Ships the complete scanner engine, CLI, MCP server,

@@ -1,6 +1,6 @@
 {
   "name": "skillsguard",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Static security scanner for AI agent Skills (SKILL.md + bundled scripts). Zero runtime dependencies.",
   "type": "module",
   "bin": {

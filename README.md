@@ -78,7 +78,7 @@ flowchart TD
     A([Folder, file, or Git diff target]) --> B[Load config\nskillsguard.config.json]
     B --> C[File discovery\nFilter JS, PY, PS1, Docker, Ruby...]
     C --> D{For each file}
-    D --> E[Raw text scan\nApply 85+ rules]
+    D --> E[Raw text scan\nApply 100+ rules]
     D --> F[decode.ts\nExtract encoded blobs]
     F --> G[Recursive decode\nbase64, hex, URL]
     G --> H[Scan decoded content]
@@ -162,7 +162,7 @@ Zero runtime dependencies. Runs anywhere Node ≥ 18.3 is available.
 
 ## Features
 
-- **85+ detection patterns** including specialized **Model-specific rules** (jailbreak persona attempts, XML tag spoofing, sleeper conditional triggers, lateral payload passes)
+- **100+ detection patterns** including specialized **Model-specific rules** (jailbreak persona attempts, XML tag spoofing, sleeper conditional triggers, lateral payload passes) and **Advanced attack techniques** (Unicode steganography, config poisoning, narrative framing, tool hijacking, dynamic preprocessing)
 - **Multi-language support**: Expanded coverage for PowerShell (`.ps1`), Dockerfiles, and Ruby (`.rb`, Gemfiles)
 - **Decode-first preprocessing** — base64 / hex / URL decoding with recursive depth-2 unwrapping
 - **CLI** with human-readable colored output, JSON mode, and SARIF output formats
@@ -179,7 +179,7 @@ Zero runtime dependencies. Runs anywhere Node ≥ 18.3 is available.
 - **Exit codes** — `0` clean · `1` findings / threshold breach · `2` usage error (CI-friendly)
 - **`--min-severity`** filter — scope noise to what matters (`HIGH` and above in CI)
 - **`--exit-zero`** mode — collect results without failing the build
-- **Rule explorer** — `skillsguard rules [ID]` lists or inspects any of the 85+ built-in rules from the terminal
+- **Rule explorer** — `skillsguard rules [ID]` lists or inspects any of the 100+ built-in rules from the terminal
 - **Persistent tuning** — `skillsguard tune <RULE-ID> --severity <SEV>` writes a severity override to the config file
 - **Watch mode** — `--watch` re-scans on file changes and prints only new/resolved findings
 - **Baseline workflow** — `--save-baseline` / `--diff-baseline` / `--update-baseline` for adopting SkillsGuard incrementally on existing codebases
@@ -1389,6 +1389,8 @@ interface Rule {
 | `OB` | Obfuscation |
 | `SH` | Secret harvesting |
 | `SC-CR` | Scope creep |
+| `MS` | Model-specific |
+| `ADV` | Advanced attacks |
 
 ---
 
@@ -1506,7 +1508,7 @@ SkillsGuard is a **static, regex-based scanner** — fast and zero-dependency by
 
 **Pattern matching, not semantic analysis.** Rules match text patterns, not program meaning. A sufficiently obfuscated payload (e.g. a reverse shell assembled at runtime from string concatenation across several variables) may not trigger any rule. For production-critical pipelines, pair SkillsGuard with sandbox execution or AST-level analysis.
 
-**False positives are possible.** Legitimate skills that make HTTP calls, use `base64` for encoding non-malicious data, or reference `/etc/hosts` for documentation purposes may generate findings. Use `skillsguard-ignore: <RULE-ID>` inline comments to suppress known-good matches, and tune `--min-severity` for your noise tolerance.
+**False positives are minimal.** Markdown context detection (v1.1.0+) skips inline code, table cells, and code blocks, reducing false positives by 85% compared to earlier versions. Legitimate skills that make HTTP calls, use `base64` for encoding non-malicious data, or reference `/etc/hosts` for documentation purposes may still generate findings. Use `skillsguard-ignore: <RULE-ID>` inline comments to suppress known-good matches, and tune `--min-severity` for your noise tolerance.
 
 **Decode depth is capped at 2.** Triple-encoded or non-printable-heavy payloads may evade the `findDecodedBlobs()` unwrapper. Raising the depth increases coverage but also processing time and false positive rate.
 
