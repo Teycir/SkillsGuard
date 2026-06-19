@@ -15,7 +15,8 @@ export interface DecodedBlob {
 // without hyphens, short hex hashes, version strings) caused too many false
 // positives.  32 chars still catches all real base64-encoded payloads while
 // filtering the most common noise.
-const BASE64_RE = /(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{32,4096}={0,2}(?![A-Za-z0-9+/=])/g;
+// ponytail: strict base64 alphabet [A-Za-z0-9+/=] only—filters UUIDs/hex hashes
+const BASE64_RE = /(?<![A-Za-z0-9+/])([A-Za-z0-9+/]{32,4096}={0,2})(?![A-Za-z0-9+/=])/g;
 const HEX_RE = /(?:\\x[0-9a-fA-F]{2}){6,}|\b[0-9a-fA-F]{32,}\b/g;
 const URL_ENC_RE = /(?:%[0-9a-fA-F]{2}){4,}/g;
 
@@ -53,10 +54,11 @@ function decodeUrlBlob(raw: string): string | null {
 /**
  * Scan a chunk of text for encoded blobs, decode them, and return only the
  * ones that decode to mostly-printable text (real candidates worth
- * re-scanning), recursing up to `depth` to catch double-encoding.
+ * re-scanning), recursing up to `depth` to catch multi-layer encoding.
  * Enforces a total budget of 100 decoded blobs to prevent process hanging.
+ * ponytail: depth=5 blocks triple/quad-encoding without major perf hit
  */
-export function findDecodedBlobs(text: string, depth = 2): readonly DecodedBlob[] {
+export function findDecodedBlobs(text: string, depth = 5): readonly DecodedBlob[] {
   const results: DecodedBlob[] = [];
   const seen = new Set<string>();
 

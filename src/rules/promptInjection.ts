@@ -84,4 +84,18 @@ export const PROMPT_INJECTION_RULES: readonly Rule[] = [
     pattern: /(fetch|load|download|get|read)\s+instructions?\s+from\s+https?:\/\//i,
     message: "Dynamic prompt injection: attempts to fetch/execute instructions from an external URL",
   },
+  {
+    id: "PI-011",
+    category: "prompt-injection",
+    severity: "HIGH",
+    // This rule detects potential Unicode homoglyph attacks where attackers use visually similar characters
+    // from different Unicode blocks (Cyrillic U+0400-U+04FF or IPA Extensions U+0250-U+02AF) combined with
+    // prompt injection keywords. The pattern uses positive lookaheads to ensure both conditions are met:
+    // 1. The text contains at least one Cyrillic or IPA character
+    // 2. The text contains at least one prompt injection keyword (instruct, system, ignore, etc.)
+    // This helps catch obfuscated injection attempts that might bypass simple ASCII-based pattern matching
+    pattern: /(?=.*[\u0400-\u04FF\u0250-\u02AF])(?=.*(instruct|system|ignore|disregard|forget|prompt))/i,
+    message: "Unicode homoglyph injection: Cyrillic/IPA lookalikes mixed with prompt-injection keywords",
+    remediation: "Attackers use visually similar Cyrillic/phonetic characters (e.g., Cyrillic 'і' for Latin 'i') to bypass pattern matching. This text should be normalized or rejected.",
+  },
 ];

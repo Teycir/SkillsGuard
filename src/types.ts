@@ -53,14 +53,12 @@ export interface Finding {
  * Risk score: a single number in [0, 100] summarising how dangerous the scan
  * result is, suitable for a CI gate threshold (e.g. fail if score > 40).
  *
- * Scoring:
- *   CRITICAL → 25 pts each (capped at 4)
- *   HIGH     → 10 pts each (capped at 4)
- *   MEDIUM   →  3 pts each (capped at 4)
- *   LOW      →  1 pt  each (capped at 4)
- *   INFO     →  0 pts
+ * Scoring (log2-scaled per severity bucket to avoid a handful of findings
+ * flooding the score while still reflecting volume impact):
+ *   contribution = log2(count + 1) * weight, where weight is
+ *   CRITICAL → 25, HIGH → 10, MEDIUM → 3, LOW → 1, INFO → 0
  *
- * Final score = min(100, sum of all contributions).
+ * Final score = min(100, sum of all bucket contributions).
  */
 export interface RiskScore {
   score: number;     // [0, 100]

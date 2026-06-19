@@ -10,7 +10,7 @@ import { join, relative, extname } from "node:path";
 import type { Finding, ScanResult, ScanOptions, CustomRule, Rule, RiskScore } from "./types.js";
 import { RULES } from "./rules.js";
 import { findDecodedBlobs } from "./decode.js";
-import { shouldIgnoreLine, isCommentLine, isPlaceholderLine, isTestFilePath, isMarkdownDocContext } from "./lib/ignore.js";
+import { shouldIgnoreLine, isCommentLine, isPlaceholderLine, isTestFilePath } from "./lib/ignore.js";
 import { runConcurrent } from "./lib/concurrency.js";
 
 // Files we care about: SKILL.md, any markdown, shell scripts, Python, JS/TS,
@@ -128,7 +128,7 @@ async function collectFiles(
         file: relative(rootDir, dir) || ".",
         line: 1,
         evidence: "Path resolution error",
-        pattern: "n/a",
+        pattern: "",
       });
       continue;
     }
@@ -151,7 +151,7 @@ async function collectFiles(
         file: relative(rootDir, dir) || ".",
         line: 1,
         evidence: "Directory read error",
-        pattern: "n/a",
+        pattern: "",
       });
       continue;
     }
@@ -176,7 +176,7 @@ async function collectFiles(
             file: relative(rootDir, full),
             line: 1,
             evidence: "Symbolic link stat error",
-          pattern: "n/a",
+            pattern: "",
           });
           continue;
         }
@@ -222,11 +222,8 @@ export function scanText(
   const lines = text.split("\n");
   const rules = resolveRules(options);
   const inTestFile = isTestFilePath(filePath);
-  const isMarkdown = filePath.endsWith('.md');
-  
-  // Track code block state for markdown files
-  let inCodeBlock = false;
 
+  // Line-by-line scan
   for (const rule of rules) {
     const regex = rule.pattern.flags.includes("g")
       ? new RegExp(rule.pattern.source, rule.pattern.flags)
@@ -235,37 +232,24 @@ export function scanText(
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
       const line = lines[lineIdx];
       if (line === undefined) continue;
-      
-      // Track markdown code blocks
-      if (isMarkdown && line.trimStart().startsWith('```')) {
-        inCodeBlock = !inCodeBlock;
-        continue;
-      }
-      
-      // Skip lines inside code blocks for markdown files
-      if (isMarkdown && inCodeBlock) continue;
 
       // 1. Inline suppression comment
       if (shouldIgnoreLine(line, rule.id)) continue;
 
-      // 2. Markdown documentation context — skip for .md files
-      //    Backticks in docs/tables/examples aren't executable code
-      if (filePath.endsWith('.md') && isMarkdownDocContext(line, lineIdx, lines)) continue;
-
-      // 3. Pure comment-line filter — skip when the rule opts in.
+      // 2. Pure comment-line filter — skip when the rule opts in.
       //    A full-line comment in a SKILL.md is almost always a README example
       //    or an explanation, not live malicious code.
       //    Exception: decoded blobs (decodedFrom set) are already de-commented
       //    content, so this filter doesn't apply to them.
       if (rule.skipCommentLines && !decodedFrom && isCommentLine(line)) continue;
 
-      // 4. Placeholder / stopword filter — skip when the rule opts in.
+      // 3. Placeholder / stopword filter — skip when the rule opts in.
       //    Only applies to raw scan, not decoded blobs (encoded payloads with
       //    "example" in them are still suspicious).
       if (rule.skipPlaceholderLines && !decodedFrom && isPlaceholderLine(line)) continue;
 
       if (regex.test(line)) {
-        // 5. Test-file path dampening: downgrade severity to INFO for findings
+        // 4. Test-file path dampening: downgrade severity to INFO for findings
         //    in test/fixture/example paths so they show up but never block CI.
         //    Applied to HIGH and lower only — CRITICAL stays CRITICAL regardless.
         const severity =
@@ -291,6 +275,52 @@ export function scanText(
     }
   }
 
+  // ponytail: Multi-line sliding window (5 lines) catches command continuations
+  // (curl \ + newline + data). Strips backslash+pipe continuations before matching.
+  // Skip if merged contains markdown fences (false positive on docs).
+  const WINDOW_SIZE = 5;
+  for (const rule of rules) {
+    const regex = rule.pattern.flags.includes("g")
+      ? new RegExp(rule.pattern.source, rule.pattern.flags)
+      : rule.pattern;
+
+    for (let startIdx = 0; startIdx < lines.length; startIdx++) {
+      const windowLines = lines.slice(startIdx, startIdx + WINDOW_SIZE);
+      const merged = windowLines.join(" ").replace(/\\[\s\n]+/g, " ").replace(/\|\s*\n\s*/g, " | ");
+      
+      // Skip markdown code fences — sliding merge creates false positives on docs
+      if (/```/.test(merged)) continue;
+      
+      if (shouldIgnoreLine(merged, rule.id)) continue;
+      if (rule.skipCommentLines && !decodedFrom && isCommentLine(merged)) continue;
+      if (rule.skipPlaceholderLines && !decodedFrom && isPlaceholderLine(merged)) continue;
+
+      if (regex.test(merged)) {
+        const severity = inTestFile && rule.severity !== "CRITICAL" ? "INFO" : rule.severity;
+        // Dedupe: only add if no line-level finding exists at this location
+        const existsAtLine = findings.some(f => 
+          f.ruleId === rule.id && f.file === filePath && f.line === startIdx + 1
+        );
+        if (!existsAtLine) {
+          findings.push({
+            ruleId: rule.id,
+            category: rule.category,
+            severity,
+            message: rule.message + " (multi-line pattern)",
+            file: filePath,
+            line: startIdx + 1,
+            evidence: merged.trim().slice(0, 200),
+            pattern: rule.pattern.source,
+            decodedFrom,
+          });
+        }
+        if (regex.flags.includes("g")) {
+          regex.lastIndex = 0;
+        }
+      }
+    }
+  }
+
   return findings;
 }
 
@@ -308,7 +338,7 @@ async function scanFile(filePath: string, rootDir: string, options?: ScanOptions
         file: relPath,
         line: 1,
         evidence: `File size: ${s.size} bytes`,
-        pattern: "n/a",
+        pattern: "",
       }];
     }
     content = await readFile(filePath, "utf-8");
@@ -325,7 +355,7 @@ async function scanFile(filePath: string, rootDir: string, options?: ScanOptions
       file: relPath,
       line: 1,
       evidence: `Read error`,
-      pattern: "n/a",
+      pattern: "",
     }];
   }
 
@@ -369,14 +399,15 @@ const RISK_WEIGHTS: Record<string, number> = {
 };
 
 export function computeRiskScore(findings: readonly Finding[]): RiskScore {
-  // Bucket findings by severity, cap each bucket at 4 to prevent a flood of
-  // identical findings from dominating the score.
+  // Bucket findings by severity. Use log2 scale to prevent flooding from
+  // dominating score while still reflecting volume impact.
+  // ponytail: log2(n+1) scales 4→2.3, 20→4.4 — real difference shows
   const buckets: Record<string, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, INFO: 0 };
   for (const f of findings) buckets[f.severity] = (buckets[f.severity] ?? 0) + 1;
 
   let raw = 0;
   for (const [sev, count] of Object.entries(buckets)) {
-    raw += Math.min(count, 4) * (RISK_WEIGHTS[sev] ?? 0);
+    raw += Math.log2(count + 1) * (RISK_WEIGHTS[sev] ?? 0);
   }
   const score = Math.min(100, raw);
 

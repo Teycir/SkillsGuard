@@ -1,15 +1,15 @@
 /**
  * Checks if a given line contains a linter suppression comment (e.g., skillsguard-ignore)
  * targeting either all rules or a specific rule ID.
+ * ponytail: word-boundary match prevents PI-00 from suppressing PI-001..PI-009
  */
 export function shouldIgnoreLine(line: string, ruleId: string): boolean {
   if (!line.includes("skillsguard-ignore")) return false;
   const hasSpecificIgnore = /skillsguard-ignore[:\s]+[A-Za-z0-9-]+/.test(line);
-  return (
-    !hasSpecificIgnore ||
-    line.includes(`skillsguard-ignore ${ruleId}`) ||
-    line.includes(`skillsguard-ignore: ${ruleId}`)
-  );
+  if (!hasSpecificIgnore) return true; // bare 'skillsguard-ignore' → suppress all
+  // Check for word-boundary match: "PI-001" exactly, not substring of "PI-0010"
+  const wordBoundaryRe = new RegExp(`skillsguard-ignore[:\\s]+${ruleId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`);
+  return wordBoundaryRe.test(line);
 }
 
 // ─── Comment-line detection ───────────────────────────────────────────────────
@@ -97,32 +97,4 @@ const TEST_PATH_RE =
 
 export function isTestFilePath(filePath: string): boolean {
   return TEST_PATH_RE.test(filePath);
-}
-
-// ─── Markdown documentation context ──────────────────────────────────────────
-
-/**
- * Returns true if line is markdown documentation context, not executable code.
- * Detects:
- *   - Inline code: `command` or `variable`
- *   - Table cells containing backticks
- *   - Lines following "Example:", "Usage:", "How to"
- * 
- * ponytail: Simple heuristics. Upgrade path: AST-based markdown parser.
- */
-export function isMarkdownDocContext(line: string, lineIdx: number, allLines: readonly string[]): boolean {
-  const trimmed = line.trim();
-  
-  // Markdown table cell (contains pipes)
-  if (trimmed.includes('|')) return true;
-  
-  // Inline code surrounded by whitespace or punctuation
-  if (/[\s\(]`[^`]+`[\s\).,;:!?]/.test(line)) return true;
-  
-  // Check 3 previous lines for example/usage context
-  const start = Math.max(0, lineIdx - 3);
-  const context = allLines.slice(start, lineIdx).join(' ').toLowerCase();
-  if (/\b(example|usage|how to|demonstration|sample)\b/.test(context)) return true;
-  
-  return false;
 }
