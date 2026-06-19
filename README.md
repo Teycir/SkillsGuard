@@ -38,7 +38,7 @@ Detects malicious SKILL.md files and bundled scripts before they run.
 
 ### _"Audit skills. Trust nothing. Ship safely."_
 
-<img src="https://raw.githubusercontent.com/Teycir/SkillsGuard/main/public/skillsguard_demo.gif" alt="SkillsGuard live demo" width="820" />
+<img src="https://raw.githubusercontent.com/Teycir/SkillsGuard/main/public/demo1.gif" alt="SkillsGuard live demo" width="820" />
 
 </div>
 
