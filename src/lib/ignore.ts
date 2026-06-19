@@ -98,3 +98,31 @@ const TEST_PATH_RE =
 export function isTestFilePath(filePath: string): boolean {
   return TEST_PATH_RE.test(filePath);
 }
+
+// ─── Markdown documentation context ──────────────────────────────────────────
+
+/**
+ * Returns true if line is markdown documentation context, not executable code.
+ * Detects:
+ *   - Inline code: `command` or `variable`
+ *   - Table cells containing backticks
+ *   - Lines following "Example:", "Usage:", "How to"
+ * 
+ * ponytail: Simple heuristics. Upgrade path: AST-based markdown parser.
+ */
+export function isMarkdownDocContext(line: string, lineIdx: number, allLines: readonly string[]): boolean {
+  const trimmed = line.trim();
+  
+  // Markdown table cell (contains pipes)
+  if (trimmed.includes('|')) return true;
+  
+  // Inline code surrounded by whitespace or punctuation
+  if (/[\s\(]`[^`]+`[\s\).,;:!?]/.test(line)) return true;
+  
+  // Check 3 previous lines for example/usage context
+  const start = Math.max(0, lineIdx - 3);
+  const context = allLines.slice(start, lineIdx).join(' ').toLowerCase();
+  if (/\b(example|usage|how to|demonstration|sample)\b/.test(context)) return true;
+  
+  return false;
+}

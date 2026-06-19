@@ -45,6 +45,7 @@ export interface Finding {
   file: string;
   line: number;
   evidence: string;
+  pattern: string;
   decodedFrom?: string;
 }
 

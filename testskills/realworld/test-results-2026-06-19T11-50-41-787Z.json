@@ -1,0 +1,14 @@
+{
+  "total": 292,
+  "scanned": 193,
+  "clean": 193,
+  "findings": 0,
+  "errors": 99,
+  "byCategory": {},
+  "bySeverity": {},
+  "topPatterns": {},
+  "topFiles": [],
+  "avgRiskScore": "0.00",
+  "maxRiskScore": 0,
+  "skillDetails": []
+}

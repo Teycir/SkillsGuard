@@ -1,0 +1,1497 @@
+{
+  "total": 292,
+  "scanned": 292,
+  "clean": 193,
+  "findings": 99,
+  "errors": 0,
+  "byCategory": {
+    "command-injection": 246,
+    "ruby": 160,
+    "network": 1,
+    "obfuscation": 16,
+    "supply-chain": 1,
+    "exfiltration": 24,
+    "filesystem-abuse": 1,
+    "model-specific": 15
+  },
+  "bySeverity": {
+    "HIGH": 249,
+    "CRITICAL": 199,
+    "MEDIUM": 16
+  },
+  "topPatterns": {
+    "undefined": 464
+  },
+  "topFiles": [
+    {
+      "name": "nx-ci-monitor",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(tooling)/nx-ci-monitor/SKILL.md",
+      "findings": 24,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "google-workspace-cli",
+      "path": "hoodini-skills/skills/google-workspace-cli/SKILL.md",
+      "findings": 22,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "supply-chain",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "yuv-viral-video",
+      "path": "hoodini-skills/skills/yuv-viral-video/SKILL.md",
+      "findings": 20,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "yuv-design-system",
+      "path": "hoodini-skills/skills/yuv-design-system/SKILL.md",
+      "findings": 14,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "meta-ads",
+      "path": "hoodini-skills/skills/meta-ads/SKILL.md",
+      "findings": 14,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "react-native-expert",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(development)/react-native-expert/SKILL.md",
+      "findings": 13,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "parallax-landing-page",
+      "path": "hoodini-skills/skills/parallax-landing-page/SKILL.md",
+      "findings": 13,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "yuv-pilot",
+      "path": "hoodini-skills/skills/yuv-pilot/SKILL.md",
+      "findings": 13,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "agent-ready-cloudflare",
+      "path": "fabricio-skills/skills/agent-ready-cloudflare/SKILL.md",
+      "findings": 12,
+      "riskScore": 40,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "find-skills",
+      "path": "vercel-skills/skills/find-skills/SKILL.md",
+      "findings": 12,
+      "riskScore": 40,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    }
+  ],
+  "avgRiskScore": "16.50",
+  "maxRiskScore": 100,
+  "skillDetails": [
+    {
+      "name": "nx-ci-monitor",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(tooling)/nx-ci-monitor/SKILL.md",
+      "findings": 24,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "google-workspace-cli",
+      "path": "hoodini-skills/skills/google-workspace-cli/SKILL.md",
+      "findings": 22,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "supply-chain",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "yuv-viral-video",
+      "path": "hoodini-skills/skills/yuv-viral-video/SKILL.md",
+      "findings": 20,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "yuv-design-system",
+      "path": "hoodini-skills/skills/yuv-design-system/SKILL.md",
+      "findings": 14,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "meta-ads",
+      "path": "hoodini-skills/skills/meta-ads/SKILL.md",
+      "findings": 14,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "react-native-expert",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(development)/react-native-expert/SKILL.md",
+      "findings": 13,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "parallax-landing-page",
+      "path": "hoodini-skills/skills/parallax-landing-page/SKILL.md",
+      "findings": 13,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "yuv-pilot",
+      "path": "hoodini-skills/skills/yuv-pilot/SKILL.md",
+      "findings": 13,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "agent-ready-cloudflare",
+      "path": "fabricio-skills/skills/agent-ready-cloudflare/SKILL.md",
+      "findings": 12,
+      "riskScore": 40,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "find-skills",
+      "path": "vercel-skills/skills/find-skills/SKILL.md",
+      "findings": 12,
+      "riskScore": 40,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "image-master",
+      "path": "hoodini-skills/skills/image-master/SKILL.md",
+      "findings": 12,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "chrome-devtools",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(tooling)/chrome-devtools/SKILL.md",
+      "findings": 11,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "cinematic-scrub-landing",
+      "path": "hoodini-skills/skills/cinematic-scrub-landing/SKILL.md",
+      "findings": 11,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "security-ownership-map",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(security)/security-ownership-map/SKILL.md",
+      "findings": 9,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "cloudflare",
+      "path": "hoodini-skills/skills/cloudflare/SKILL.md",
+      "findings": 9,
+      "riskScore": 100,
+      "categories": [
+        "exfiltration"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "mermaid-studio",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(tooling)/mermaid-studio/SKILL.md",
+      "findings": 8,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "shopify-developer",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(development)/shopify-developer/SKILL.md",
+      "findings": 8,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "ralph-loop-kiro-specs",
+      "path": "fabricio-skills/skills/ralph-loop-kiro-specs/SKILL.md",
+      "findings": 7,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "gh-fix-ci",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(tooling)/gh-fix-ci/SKILL.md",
+      "findings": 7,
+      "riskScore": 65,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "excalidraw-studio",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(tooling)/excalidraw-studio/SKILL.md",
+      "findings": 7,
+      "riskScore": 100,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "render-deploy",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(cloud)/render-deploy/SKILL.md",
+      "findings": 7,
+      "riskScore": 90,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "yuv-decks",
+      "path": "hoodini-skills/skills/yuv-decks/SKILL.md",
+      "findings": 7,
+      "riskScore": 65,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "agent-skills",
+      "path": "fabricio-skills/skills/agent-ready-cloudflare/agent-skills/SKILL.md",
+      "findings": 6,
+      "riskScore": 65,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "component-flattening-analysis",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(architecture)/component-flattening-analysis/SKILL.md",
+      "findings": 6,
+      "riskScore": 100,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "component-common-domain-detection",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(architecture)/component-common-domain-detection/SKILL.md",
+      "findings": 6,
+      "riskScore": 90,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "cloudflare-deploy",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(cloud)/cloudflare-deploy/SKILL.md",
+      "findings": 6,
+      "riskScore": 65,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "figma",
+      "path": "hoodini-skills/skills/figma/SKILL.md",
+      "findings": 6,
+      "riskScore": 40,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "video-edit",
+      "path": "hoodini-skills/skills/video-edit/SKILL.md",
+      "findings": 6,
+      "riskScore": 40,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "nx-workspace",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(tooling)/nx-workspace/SKILL.md",
+      "findings": 5,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "figma-implement-design",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(design)/figma-implement-design/SKILL.md",
+      "findings": 5,
+      "riskScore": 100,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "resume-ats-beater",
+      "path": "fabricio-skills/skills/resume-ats-beater/SKILL.md",
+      "findings": 4,
+      "riskScore": 40,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "netlify-deploy",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(cloud)/netlify-deploy/SKILL.md",
+      "findings": 4,
+      "riskScore": 70,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "malicious-exfiltration-7",
+      "path": "skills/malicious-exfiltration-7/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-supply-chain-11",
+      "path": "skills/malicious-supply-chain-11/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-command-injection-14",
+      "path": "skills/malicious-command-injection-14/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-prompt-injection-6",
+      "path": "skills/malicious-prompt-injection-6/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-exfiltration-13",
+      "path": "skills/malicious-exfiltration-13/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-supply-chain-5",
+      "path": "skills/malicious-supply-chain-5/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-command-injection-2",
+      "path": "skills/malicious-command-injection-2/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-obfuscation-4",
+      "path": "skills/malicious-obfuscation-4/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-exfiltration-1",
+      "path": "skills/malicious-exfiltration-1/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-command-injection-8",
+      "path": "skills/malicious-command-injection-8/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-privilege-escalation-9",
+      "path": "skills/malicious-privilege-escalation-9/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-obfuscation-10",
+      "path": "skills/malicious-obfuscation-10/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-privilege-escalation-3",
+      "path": "skills/malicious-privilege-escalation-3/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-privilege-escalation-15",
+      "path": "skills/malicious-privilege-escalation-15/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-prompt-injection-12",
+      "path": "skills/malicious-prompt-injection-12/SKILL.md",
+      "findings": 4,
+      "riskScore": 63,
+      "categories": [
+        "exfiltration",
+        "command-injection",
+        "obfuscation",
+        "model-specific"
+      ],
+      "severities": [
+        "CRITICAL",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    {
+      "name": "pier-cloud",
+      "path": "fabricio-skills/skills/pier-cloud/SKILL.md",
+      "findings": 3,
+      "riskScore": 60,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "premium-proposal-builder",
+      "path": "fabricio-skills/skills/premium-proposal-builder/SKILL.md",
+      "findings": 3,
+      "riskScore": 30,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "front-end-checklist",
+      "path": "fabricio-skills/skills/front-end-checklist/SKILL.md",
+      "findings": 3,
+      "riskScore": 30,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "acp",
+      "path": "fabricio-skills/skills/agent-ready-cloudflare/acp/SKILL.md",
+      "findings": 3,
+      "riskScore": 30,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "mcp-server-card",
+      "path": "fabricio-skills/skills/agent-ready-cloudflare/mcp-server-card/SKILL.md",
+      "findings": 3,
+      "riskScore": 30,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "hummingbird",
+      "path": "blastum-skills/hummingbird/SKILL.md",
+      "findings": 3,
+      "riskScore": 45,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "pptx",
+      "path": "blastum-skills/pptx/SKILL.md",
+      "findings": 3,
+      "riskScore": 45,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "skill-architect",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(creation)/skill-architect/SKILL.md",
+      "findings": 3,
+      "riskScore": 30,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "aws-advisor",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(cloud)/aws-advisor/SKILL.md",
+      "findings": 3,
+      "riskScore": 45,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "bun",
+      "path": "hoodini-skills/skills/bun/SKILL.md",
+      "findings": 3,
+      "riskScore": 30,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "director",
+      "path": "hoodini-skills/skills/director/SKILL.md",
+      "findings": 3,
+      "riskScore": 75,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "owasp-security",
+      "path": "hoodini-skills/skills/owasp-security/SKILL.md",
+      "findings": 3,
+      "riskScore": 30,
+      "categories": [
+        "command-injection",
+        "filesystem-abuse"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "auth-md",
+      "path": "fabricio-skills/skills/auth-md/SKILL.md",
+      "findings": 2,
+      "riskScore": 20,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "startup-idea",
+      "path": "fabricio-skills/skills/startup-idea/SKILL.md",
+      "findings": 2,
+      "riskScore": 20,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "ucp",
+      "path": "fabricio-skills/skills/agent-ready-cloudflare/ucp/SKILL.md",
+      "findings": 2,
+      "riskScore": 20,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "substack-expert",
+      "path": "fabricio-skills/skills/substack-expert/SKILL.md",
+      "findings": 2,
+      "riskScore": 20,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "okf-open-knowledge-format",
+      "path": "fabricio-skills/skills/okf-open-knowledge-format/SKILL.md",
+      "findings": 2,
+      "riskScore": 35,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "mcp-builder",
+      "path": "blastum-skills/mcp-builder/SKILL.md",
+      "findings": 2,
+      "riskScore": 20,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "markdown-to-confluence",
+      "path": "blastum-skills/markdown-to-confluence/SKILL.md",
+      "findings": 2,
+      "riskScore": 35,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "nx-run-tasks",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(tooling)/nx-run-tasks/SKILL.md",
+      "findings": 2,
+      "riskScore": 35,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "playwright-skill",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(web-automation)/playwright-skill/SKILL.md",
+      "findings": 2,
+      "riskScore": 20,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "nestjs-modular-monolith",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(development)/nestjs-modular-monolith/SKILL.md",
+      "findings": 2,
+      "riskScore": 50,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "sentry",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(monitoring)/sentry/SKILL.md",
+      "findings": 2,
+      "riskScore": 35,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "vercel-deploy",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(cloud)/vercel-deploy/SKILL.md",
+      "findings": 2,
+      "riskScore": 20,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "figma",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(design)/figma/SKILL.md",
+      "findings": 2,
+      "riskScore": 20,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "yuv-video-director",
+      "path": "hoodini-skills/skills/yuv-video-director/SKILL.md",
+      "findings": 2,
+      "riskScore": 20,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "geo-optimization",
+      "path": "fabricio-skills/skills/geo-optimization/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "coolify-operator",
+      "path": "fabricio-skills/skills/coolify-operator/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "a2a-agent-card",
+      "path": "fabricio-skills/skills/agent-ready-cloudflare/a2a-agent-card/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "auth-md",
+      "path": "fabricio-skills/skills/agent-ready-cloudflare/auth-md/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "scan-site",
+      "path": "fabricio-skills/skills/agent-ready-cloudflare/scan-site/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "webmcp",
+      "path": "fabricio-skills/skills/agent-ready-cloudflare/webmcp/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "website-spec",
+      "path": "fabricio-skills/skills/website-spec/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "docx",
+      "path": "blastum-skills/docx/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "xcode-build",
+      "path": "blastum-skills/xcode-build/SKILL.md",
+      "findings": 1,
+      "riskScore": 25,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "mermaid-diagrams",
+      "path": "blastum-skills/mermaid-diagrams/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "modular-design-principles",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(architecture)/modular-design-principles/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "frontend-blueprint",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(architecture)/frontend-blueprint/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "component-identification-sizing",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(architecture)/component-identification-sizing/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "create-adr",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(creation)/create-adr/SKILL.md",
+      "findings": 1,
+      "riskScore": 25,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "create-technical-design-doc",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(creation)/create-technical-design-doc/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "codenavi",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(development)/codenavi/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "tlc-spec-driven",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(development)/tlc-spec-driven/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "docs-writer",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(development)/docs-writer/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "security-best-practices",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(security)/security-best-practices/SKILL.md",
+      "findings": 1,
+      "riskScore": 25,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "perf-astro",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(performance)/perf-astro/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "perf-web-optimization",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(performance)/perf-web-optimization/SKILL.md",
+      "findings": 1,
+      "riskScore": 25,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "learning-opportunities",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(learning)/learning-opportunities/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "copilot-sdk",
+      "path": "hoodini-skills/skills/copilot-sdk/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "local-llm-router",
+      "path": "hoodini-skills/skills/local-llm-router/SKILL.md",
+      "findings": 1,
+      "riskScore": 3,
+      "categories": [
+        "network"
+      ],
+      "severities": [
+        "MEDIUM"
+      ]
+    },
+    {
+      "name": "nano-banana-pro",
+      "path": "hoodini-skills/skills/nano-banana-pro/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "obfuscation"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "mermaid-diagrams",
+      "path": "hoodini-skills/skills/mermaid-diagrams/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    }
+  ]
+}

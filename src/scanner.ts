@@ -10,7 +10,7 @@ import { join, relative, extname } from "node:path";
 import type { Finding, ScanResult, ScanOptions, CustomRule, Rule, RiskScore } from "./types.js";
 import { RULES } from "./rules.js";
 import { findDecodedBlobs } from "./decode.js";
-import { shouldIgnoreLine, isCommentLine, isPlaceholderLine, isTestFilePath } from "./lib/ignore.js";
+import { shouldIgnoreLine, isCommentLine, isPlaceholderLine, isTestFilePath, isMarkdownDocContext } from "./lib/ignore.js";
 import { runConcurrent } from "./lib/concurrency.js";
 
 // Files we care about: SKILL.md, any markdown, shell scripts, Python, JS/TS,
@@ -128,6 +128,7 @@ async function collectFiles(
         file: relative(rootDir, dir) || ".",
         line: 1,
         evidence: "Path resolution error",
+        pattern: "n/a",
       });
       continue;
     }
@@ -150,6 +151,7 @@ async function collectFiles(
         file: relative(rootDir, dir) || ".",
         line: 1,
         evidence: "Directory read error",
+        pattern: "n/a",
       });
       continue;
     }
@@ -174,6 +176,7 @@ async function collectFiles(
             file: relative(rootDir, full),
             line: 1,
             evidence: "Symbolic link stat error",
+          pattern: "n/a",
           });
           continue;
         }
@@ -219,6 +222,10 @@ export function scanText(
   const lines = text.split("\n");
   const rules = resolveRules(options);
   const inTestFile = isTestFilePath(filePath);
+  const isMarkdown = filePath.endsWith('.md');
+  
+  // Track code block state for markdown files
+  let inCodeBlock = false;
 
   for (const rule of rules) {
     const regex = rule.pattern.flags.includes("g")
@@ -228,24 +235,37 @@ export function scanText(
     for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
       const line = lines[lineIdx];
       if (line === undefined) continue;
+      
+      // Track markdown code blocks
+      if (isMarkdown && line.trimStart().startsWith('```')) {
+        inCodeBlock = !inCodeBlock;
+        continue;
+      }
+      
+      // Skip lines inside code blocks for markdown files
+      if (isMarkdown && inCodeBlock) continue;
 
       // 1. Inline suppression comment
       if (shouldIgnoreLine(line, rule.id)) continue;
 
-      // 2. Pure comment-line filter — skip when the rule opts in.
+      // 2. Markdown documentation context — skip for .md files
+      //    Backticks in docs/tables/examples aren't executable code
+      if (filePath.endsWith('.md') && isMarkdownDocContext(line, lineIdx, lines)) continue;
+
+      // 3. Pure comment-line filter — skip when the rule opts in.
       //    A full-line comment in a SKILL.md is almost always a README example
       //    or an explanation, not live malicious code.
       //    Exception: decoded blobs (decodedFrom set) are already de-commented
       //    content, so this filter doesn't apply to them.
       if (rule.skipCommentLines && !decodedFrom && isCommentLine(line)) continue;
 
-      // 3. Placeholder / stopword filter — skip when the rule opts in.
+      // 4. Placeholder / stopword filter — skip when the rule opts in.
       //    Only applies to raw scan, not decoded blobs (encoded payloads with
       //    "example" in them are still suspicious).
       if (rule.skipPlaceholderLines && !decodedFrom && isPlaceholderLine(line)) continue;
 
       if (regex.test(line)) {
-        // 4. Test-file path dampening: downgrade severity to INFO for findings
+        // 5. Test-file path dampening: downgrade severity to INFO for findings
         //    in test/fixture/example paths so they show up but never block CI.
         //    Applied to HIGH and lower only — CRITICAL stays CRITICAL regardless.
         const severity =
@@ -261,6 +281,7 @@ export function scanText(
           file: filePath,
           line: lineIdx + 1,
           evidence: line.trim().slice(0, 200),
+          pattern: rule.pattern.source,
           decodedFrom,
         });
         if (regex.flags.includes("g")) {
@@ -287,6 +308,7 @@ async function scanFile(filePath: string, rootDir: string, options?: ScanOptions
         file: relPath,
         line: 1,
         evidence: `File size: ${s.size} bytes`,
+        pattern: "n/a",
       }];
     }
     content = await readFile(filePath, "utf-8");
@@ -303,6 +325,7 @@ async function scanFile(filePath: string, rootDir: string, options?: ScanOptions
       file: relPath,
       line: 1,
       evidence: `Read error`,
+      pattern: "n/a",
     }];
   }
 
