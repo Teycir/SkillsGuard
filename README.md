@@ -437,6 +437,10 @@ cd ~/Mcp/skillsguard-mcp && git pull && npm install --include=dev && npm run bui
 
 Once Path B is wired up, an agent doesn't need to be told to scan something — it reaches for `skillsguard` on its own whenever it's about to trust unfamiliar skill content. Here's an unedited example from an OpenCode agent session (`claude-sonnet-4.5`) asked to *"check all the skills installed on this pc."*
 
+<div align="center">
+<img src="public/scan.png" alt="OpenCode agent running skillsguard across ~/.kiro/skills, ~/.agents/skills, and ~/.config/opencode/skill, then reporting a SAFE verdict" width="800" />
+</div>
+
 The agent located every skill directory on the machine, then ran SkillsGuard against each one before answering:
 
 ```bash
