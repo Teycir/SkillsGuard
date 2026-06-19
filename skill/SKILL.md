@@ -19,6 +19,21 @@ If neither tool is available, fall back to the CLI:
 skillsguard /path/to/skill --json
 ```
 
+If the CLI isn't installed either — or the target is a **remote file you found online and haven't downloaded** (e.g. a `SKILL.md` linked from a GitHub repo or search result) — use the free hosted **Cloud API** on Cloudflare Workers instead. No install, no key, no local file required:
+
+```bash
+# Stream a remote file straight into the scanner — never touches disk
+curl -s https://raw.githubusercontent.com/owner/repo/main/SKILL.md | \
+  curl -s --data-binary @- https://skillsguard.apiskillsguard.workers.dev/scan
+
+# Or scan a local file the same way
+curl -s --data-binary @SKILL.md https://skillsguard.apiskillsguard.workers.dev/scan
+```
+
+> **Important:** SkillsGuard's CLI has **no `--url` flag** — don't invent one. There is also no MCP tool for remote URLs. For anything not already on disk, reach for the Cloud API curl one-liner above rather than guessing a flag or writing a multi-step download script.
+
+Cloud API limits: 60 requests/minute/IP, 512 KB max payload, scans one file's content per request (not whole directories — use the CLI or MCP tools for directory scans).
+
 ---
 
 ## Tool reference
@@ -69,14 +84,23 @@ Scans each subdirectory independently with concurrency control. Returns a summar
 }
 ```
 
+### Cloud API — remote / no-install fallback
+
+```
+POST https://skillsguard.apiskillsguard.workers.dev/scan
+```
+
+Send raw file content as the request body (`--data-binary`) or JSON `{"content": "...", "filename": "..."}`. Returns the same shape as a single-file CLI scan: `findings[]`, `riskScore`, `safe`. Use this when there's no MCP tool or CLI available, or when the target is remote content you haven't saved locally yet — pipe a download straight into it rather than writing it to disk first.
+
 ---
 
 ## Workflow
 
 ### Step 1: Choose the right tool
 
-- Single skill or file → `scan_skill`
+- Single skill or file already on disk → `scan_skill`
 - A whole skills folder (e.g. `~/.kiro/skills`, `~/.agents/skills`) → `scan_skills_dir`
+- **Found online / no local copy / no MCP tools or CLI available** → Cloud API curl one-liner (see above) — don't invent a `--url` flag, and don't bother writing a temp file unless you also need to keep a copy
 - Unsure → use `scan_skills_dir`; it handles both cases
 
 ### Step 2: Resolve the target path

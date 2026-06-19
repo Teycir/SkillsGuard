@@ -114,6 +114,7 @@ flowchart TD
 - [Quick Start](#quick-start)
 - [Local Workflow](#local-workflow)
   - [Kiro CLI — Complete Example](#kiro-cli--complete-example)
+  - [Real-World Example — Self-Auditing Installed Skills](#real-world-example--self-auditing-installed-skills)
 - [CLI Usage](#cli-usage)
 - [Git Diff Mode](#git-diff-mode)
 - [Configuration File](#configuration-file)
@@ -429,6 +430,69 @@ Scan ~/.kiro/skills/some-new-skill for security issues
 ```bash
 cd ~/Mcp/skillsguard-mcp && git pull && npm install --include=dev && npm run build
 ```
+
+---
+
+### Real-World Example — Self-Auditing Installed Skills
+
+Once Path B is wired up, an agent doesn't need to be told to scan something — it reaches for `skillsguard` on its own whenever it's about to trust unfamiliar skill content. Here's an unedited example from an OpenCode agent session (`claude-sonnet-4.5`) asked to *"check all the skills installed on this pc."*
+
+The agent located every skill directory on the machine, then ran SkillsGuard against each one before answering:
+
+```bash
+for dir in ~/.kiro/skills ~/.agents/skills ~/.config/opencode/skill; do
+  [ -d "$dir" ] && echo "=== $dir ===" && skillsguard "$dir" --json --min-severity HIGH
+done
+```
+
+It came back with a structured report, then summarized it in plain language:
+
+> Scanned 3 directories: `~/.kiro/skills`, `~/.agents/skills`, `~/.config/opencode/skill`.
+>
+> All findings false positives. Scanner hitting markdown docs, example code, inline backticks — no real threats.
+>
+> **Verdict: SAFE**
+>
+> Both `~/.kiro/skills` and `~/.agents/skills` contain identical false positives. `~/.config/opencode/skill` has 1 trivial finding (backtick in doc prose).
+>
+> All skills safe to use.
+
+No prompting was needed beyond the original request — the agent treated scanning unfamiliar skill content as a default step before vouching for it, exactly the behavior `skill/SKILL.md` is designed to teach.
+
+#### Bonus: Auditing Third-Party Skills Found Online
+
+A follow-up session asked the same kind of agent to *"use skillsguard curl function to check a couple of skills online you can find with internet search."* It web-searched for AI agent skill repositories, landed on Anthropic's own [`anthropics/skills`](https://github.com/anthropics/skills) repo on GitHub, and went looking for a way to scan a remote file directly:
+
+```bash
+skillsguard --url https://raw.githubusercontent.com/anthropics/skills/main/skills/algorithmic-art/SKILL.md --json
+```
+
+That flag doesn't exist — a quick `skillsguard --help | grep -i url` confirmed it — so the agent fell back to downloading each `SKILL.md` with `curl` and scanning the local copy instead:
+
+```bash
+curl -sL https://raw.githubusercontent.com/anthropics/skills/main/skills/algorithmic-art/SKILL.md -o skill1.md
+curl -sL https://raw.githubusercontent.com/anthropics/skills/main/skills/claude-api/SKILL.md -o skill2.md
+
+skillsguard skill1.md --json --min-severity HIGH
+skillsguard skill2.md --json --min-severity HIGH
+```
+
+> Scanned 2 Anthropic skills from GitHub:
+>
+> **1. algorithmic-art** — CLEAN
+> - Score: 0/100 (NONE)
+> - No findings
+>
+> **2. claude-api** — FALSE POSITIVES ONLY
+> - Score: 100/100 (CRITICAL)
+> - 67 findings, all backticks in markdown docs showing API examples
+> - No real threats — scanner hitting inline code like `curl`, `requests`, doc references to files
+
+A real demonstration of the false-positive trade-off called out in [Limitations](#limitations): a doc-heavy `SKILL.md` packed with inline-code API examples can rack up a misleadingly high risk score from pattern noise alone, even with zero genuine threats. `--min-severity`, `skillsguard-ignore:` comments, and `tune`/`--severity-override` exist to bring cases like this back down to signal.
+
+> **Note:** There's currently no CLI flag for scanning a remote URL directly — `curl` the file down first, then scan the local copy, as shown above. To scan remote content *without* installing the CLI at all, send it to the hosted [Cloud API](#cloud-api-free) instead: `curl -s --data-binary @skill1.md https://skillsguard.apiskillsguard.workers.dev/scan`.
+>
+> **Update:** `skill/SKILL.md` now documents this explicitly — it tells the agent there's no `--url` flag and routes it straight to a one-line Cloud API curl (downloading and scanning in a single piped command, no temp file needed) whenever the target is online content with no local copy. A fresh agent session asked the same thing today should skip the failed `--url` guess and the manual download step entirely.
 
 ---
 
