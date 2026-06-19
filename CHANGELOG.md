@@ -6,6 +6,23 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ---
 
+## [1.1.1] — 2026-06-19
+
+### Added
+- **EX-010**: Context leakage via environment variable enumeration (secret-harvesting exfiltration)
+- **OB-004-CTX**: Context-aware obfuscation detection (tracks surrounding code patterns)
+- Enhanced command-injection patterns for shell metacharacter sequences
+- Enhanced network exfiltration detection for covert channels
+- Enhanced persistence detection for init system manipulation
+- Comprehensive test coverage for new rules
+
+### Fixed
+- **Decode depth overflow**: Added recursion depth limit to prevent stack overflow on deeply nested base64
+- **Scanner context tracking**: Improved file position tracking for multi-line matches
+- **Ignore patterns**: Refined gitignore-style pattern matching for test fixtures
+
+---
+
 ## [1.1.0] — 2026-06-19
 
 ### Added
