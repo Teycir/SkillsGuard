@@ -2,7 +2,7 @@
 
 ## 1-Minute Demo
 
-![SkillsGuard 1-minute demo](../public/1min-demo.gif)
+![SkillsGuard 1-minute demo](https://raw.githubusercontent.com/Teycir/SkillsGuard/main/public/demo1.gif)
 
 This demo shows:
 1. Scanning a safe skill from Anthropic's official skills repo
