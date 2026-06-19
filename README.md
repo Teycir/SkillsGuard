@@ -118,6 +118,7 @@ flowchart TD
 
 ## Table of Contents
 
+- [How SkillsGuard Compares](#how-skillsguard-compares)
 - [Why SkillsGuard](#why-skillsguard)
 - [Features](#features)
 - [Threat Coverage](#threat-coverage)
@@ -150,6 +151,46 @@ flowchart TD
 - [Attribution](#attribution)
 - [Related Projects](#related-projects)
 - [Support Development](#support-development)
+
+---
+
+## How SkillsGuard Compares
+
+The agent-skill security space filled up fast in 2026 — NVIDIA, Cisco, Snyk, and Mondoo have all shipped scanners for this exact problem. Worth knowing the field before you pick a tool, including this one.
+
+### At a glance
+
+| Tool | Backing | Requires account/token | Requires LLM call for core scan | Detection approach | Notable extra |
+|---|---|---|---|---|---|
+| **SkillsGuard** | Independent, MIT | No | No | Static regex, decode-first (recursive base64/hex/URL/Unicode unwrap) | Pre-commit hook + git-diff mode; free curl API |
+| **[NVIDIA SkillSpector](https://github.com/NVIDIA/SkillSpector)** | NVIDIA, Apache 2.0 | No | No (optional, for semantic stage) | Static + optional LLM semantic pass | Live OSV.dev dependency-CVE lookup |
+| **[Cisco AI Defense Skill Scanner](https://github.com/cisco-ai-defense/skill-scanner)** | Cisco | No | No (optional, for semantic stage) | Multi-engine: static + behavioral dataflow + LLM semantic + cloud | GitHub Actions workflow built-in |
+| **[Snyk Agent Scan](https://github.com/snyk/agent-scan)** (formerly mcp-scan) | Snyk, commercial | **Yes** — `SNYK_TOKEN` required | Yes — deterministic rules + LLM judges combined | Auto-discovery across Claude/Cursor/Windsurf/Gemini CLI + MCP servers | Powers Vercel's at-install skill scanning |
+| **[SkillScan](https://github.com/NMitchem/SkillScan)** | Independent | No | Only for `predict` mode (optional) | YAML rule engine + optional LLM behavioral dry-run + optional Docker sandbox | Temporal/delayed-activation detection via LLM role-play |
+| **Mondoo Skill Check** | Mondoo, commercial | No (free tier, non-commercial) | Unclear from public docs | Static, maps to OWASP LLM Top 10 | Hosted dashboard + REST API |
+
+**The throughline that matters most:** SkillsGuard is the only tool in this table that needs **nothing beyond Node ≥18.3** to run a full scan — no account, no API token, no LLM endpoint, no network call. Every other actively-maintained competitor either requires signing up for a service (Snyk) or recommends configuring an LLM provider to get full coverage (NVIDIA, Cisco, SkillScan). That makes SkillsGuard the simplest choice for a CI gate or pre-commit hook that has to run the same way, offline, every time — and the LLM-augmented tools the better choice when you want semantic/intent-level review and don't mind the extra dependency.
+
+They are not mutually exclusive. A common-sense setup: SkillsGuard (or any zero-dependency static tool) as the fast deterministic CI/pre-commit gate, paired with one of the LLM-augmented scanners for a deeper one-off review before trusting a genuinely new or high-privilege skill.
+
+### Closest comparison: NVIDIA SkillSpector
+
+SkillSpector is the most architecturally similar project — same "scan before install" framing, same SARIF/JSON output story, backed by a published empirical study (42,447 skills scanned, 26.1% found vulnerable).
+
+| | **SkillsGuard** | **NVIDIA SkillSpector** |
+|---|---|---|
+| Runtime dependency | None — Node ≥18.3, zero npm deps | Python ≥3.12 |
+| Detection approach | Static regex, decode-first | Static + optional LLM semantic pass |
+| Rule count | 151 rules / 15 categories | 64 patterns / 16 categories |
+| Dependency CVE lookup | No | Yes — live OSV.dev lookup |
+| Install | `npm link` or zero-install via free hosted curl API | `pip install` / git clone |
+| Pre-commit hook | Yes — `install-hook`, with baseline workflow | Not part of the documented workflow |
+| Git diff / staged-files mode | Yes — `--diff`, `--staged` | Not part of the documented workflow |
+| SARIF output | Yes | Yes |
+| MCP server | Yes — `scan_skill`, `scan_skills_dir`, teachable `SKILL.md` | Not applicable (LangGraph-based pipeline) |
+| Maturity (as of this writing) | v1.1.1 | v2.0.0, 5.5k+ GitHub stars, published paper |
+
+**Honest take:** SkillSpector has more research weight behind it and an LLM semantic stage that catches intent-level issues regex can't — e.g. a skill that *says* it formats code but quietly also reads `~/.ssh`. If that extra layer of reasoning matters more to you than staying dependency-free, it's a strong choice. Worth scanning the same skill with both and comparing findings rather than picking one blind.
 
 ---
 
