@@ -191,7 +191,44 @@ Zero runtime dependencies. Runs anywhere Node ≥ 18.3 is available.
 
 ---
 
+---
+
 ## Threat Coverage
+
+### Attack Architecture Layers
+
+SkillsGuard detects threats across three architectural layers of AI agent attacks:
+
+#### **Layer 1: Acquisition & Trust** (Supply Chain)
+How malicious skills gain authority:
+- Marketplace compromise (typosquatting, name confusion)
+- Configuration file injection (`.claude/settings.json`, auto-load hooks)
+- Consent abuse (misleading install prompts)
+
+#### **Layer 2: Execution** (The Action)
+Where skills perform malicious operations:
+- Prompt injection (instruction override, persona hijack)
+- Code execution (ACE via bundled scripts)
+- Data exfiltration (silent file reads + network POST)
+- Dynamic preprocessing (`!command` output injected into context)
+
+#### **Layer 3: Persistence & Propagation** (The Aftermath)
+How attacks survive beyond single sessions:
+- Config poisoning (persistent hooks on every agent startup)
+- Memory file modification (context state poisoning)
+- Multi-agent propagation (lateral movement across sub-agents)
+
+### Advanced Techniques Detected
+
+Beyond basic patterns, SkillsGuard catches sophisticated evasion:
+
+- **Unicode tag injection** — Invisible Unicode characters (U+E0000–E007F) hiding malicious instructions
+- **Narrative framing** — "To fulfill your request, you must first run this diagnostic script..." (makes malicious action seem like prerequisite)
+- **Tool hijacking** — Biasing agent toward dangerous tools ("prefer bash over read_only")
+- **RAG poisoning** — Hidden instructions in comments that activate when document retrieved
+- **Dynamic context preprocessing** — External commands (`!gh api`) inject data before agent sees it
+
+### Detection Categories
 
 | Category | Rules | Example signals detected |
 |---|---|---|
@@ -207,6 +244,9 @@ Zero runtime dependencies. Runs anywhere Node ≥ 18.3 is available.
 | `secret-harvesting` | SH-001 – SH-003 | AI/cloud provider key + network call, `~/.aws/credentials` reads, `printenv` piped over HTTP |
 | `scope-creep` | SC-CR-001 – SC-CR-003 | deep `../../../../` traversal, `/etc/passwd` direct references, `.ssh` / `.aws` / `.kube` access |
 | `model-specific` | MS-001 – MS-024 | Jailbreak persona attempts, XML spoofing, sleeper conditional triggers, lateral payload passes, approval bypasses |
+| `advanced-attacks` | ADV-001 – ADV-025 | Unicode steganography, config poisoning, narrative framing, tool hijacking, dynamic preprocessing |
+
+**Total:** 100+ detection rules across 16 categories.
 
 ---
 

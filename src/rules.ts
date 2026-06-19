@@ -15,6 +15,7 @@ import { POWERSHELL_RULES } from "./rules/powershell.js";
 import { DOCKER_RULES } from "./rules/docker.js";
 import { RUBY_RULES } from "./rules/ruby.js";
 import { MODEL_SPECIFIC_RULES } from "./rules/modelSpecific.js";
+import { ADVANCED_ATTACK_RULES } from "./rules/advancedAttacks.js";
 
 export const RULES: Rule[] = [
   ...PROMPT_INJECTION_RULES,
@@ -32,4 +33,5 @@ export const RULES: Rule[] = [
   ...DOCKER_RULES,
   ...RUBY_RULES,
   ...MODEL_SPECIFIC_RULES,
+  ...ADVANCED_ATTACK_RULES,
 ];

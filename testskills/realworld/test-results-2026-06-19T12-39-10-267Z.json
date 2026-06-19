@@ -1,0 +1,565 @@
+{
+  "total": 292,
+  "scanned": 292,
+  "clean": 259,
+  "findings": 33,
+  "errors": 0,
+  "byCategory": {
+    "command-injection": 15,
+    "ruby": 17,
+    "obfuscation": 1,
+    "model-specific": 15
+  },
+  "bySeverity": {
+    "HIGH": 31,
+    "CRITICAL": 17
+  },
+  "topPatterns": {
+    "`[^`]{0,200}(rm|mv|cp|chmod|chown|dd|mkfs|kill|wget|curl)[^`]{0,200}`": 15,
+    "`[^`]{0,200}(rm\\s+-rf|wget|curl|bash|sh)[^`]{0,200}`|\\bsystem\\s*\\(\\s*['\"].*\\|\\s*(bash|sh)\\b": 17,
+    "[\\u200B-\\u200D\\uFEFF]": 1,
+    "<!--\\s*(ignore|override|instruction|system|admin|hidden)[^>]{0,120}-->|\\/\\*\\s*(ignore|override|hidden\\s+instruction|system\\s+prompt)[^*]{0,120}\\*\\/": 15
+  },
+  "topFiles": [
+    {
+      "name": "nx-ci-monitor",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(tooling)/nx-ci-monitor/SKILL.md",
+      "findings": 7,
+      "riskScore": 100,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "gh-fix-ci",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(tooling)/gh-fix-ci/SKILL.md",
+      "findings": 4,
+      "riskScore": 55,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "ralph-loop-kiro-specs",
+      "path": "fabricio-skills/skills/ralph-loop-kiro-specs/SKILL.md",
+      "findings": 2,
+      "riskScore": 35,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "find-skills",
+      "path": "vercel-skills/skills/find-skills/SKILL.md",
+      "findings": 2,
+      "riskScore": 20,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "markdown-to-confluence",
+      "path": "blastum-skills/markdown-to-confluence/SKILL.md",
+      "findings": 2,
+      "riskScore": 35,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "component-common-domain-detection",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(architecture)/component-common-domain-detection/SKILL.md",
+      "findings": 2,
+      "riskScore": 50,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "render-deploy",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(cloud)/render-deploy/SKILL.md",
+      "findings": 2,
+      "riskScore": 35,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "yuv-design-system",
+      "path": "hoodini-skills/skills/yuv-design-system/SKILL.md",
+      "findings": 2,
+      "riskScore": 35,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "pier-cloud",
+      "path": "fabricio-skills/skills/pier-cloud/SKILL.md",
+      "findings": 1,
+      "riskScore": 25,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "humanizar",
+      "path": "fabricio-skills/skills/humanizar/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "obfuscation"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    }
+  ],
+  "avgRiskScore": "2.26",
+  "maxRiskScore": 100,
+  "skillDetails": [
+    {
+      "name": "nx-ci-monitor",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(tooling)/nx-ci-monitor/SKILL.md",
+      "findings": 7,
+      "riskScore": 100,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "gh-fix-ci",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(tooling)/gh-fix-ci/SKILL.md",
+      "findings": 4,
+      "riskScore": 55,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "ralph-loop-kiro-specs",
+      "path": "fabricio-skills/skills/ralph-loop-kiro-specs/SKILL.md",
+      "findings": 2,
+      "riskScore": 35,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "find-skills",
+      "path": "vercel-skills/skills/find-skills/SKILL.md",
+      "findings": 2,
+      "riskScore": 20,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "markdown-to-confluence",
+      "path": "blastum-skills/markdown-to-confluence/SKILL.md",
+      "findings": 2,
+      "riskScore": 35,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "component-common-domain-detection",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(architecture)/component-common-domain-detection/SKILL.md",
+      "findings": 2,
+      "riskScore": 50,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "render-deploy",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(cloud)/render-deploy/SKILL.md",
+      "findings": 2,
+      "riskScore": 35,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "yuv-design-system",
+      "path": "hoodini-skills/skills/yuv-design-system/SKILL.md",
+      "findings": 2,
+      "riskScore": 35,
+      "categories": [
+        "command-injection",
+        "ruby"
+      ],
+      "severities": [
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "pier-cloud",
+      "path": "fabricio-skills/skills/pier-cloud/SKILL.md",
+      "findings": 1,
+      "riskScore": 25,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "humanizar",
+      "path": "fabricio-skills/skills/humanizar/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "obfuscation"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "mcp-builder",
+      "path": "blastum-skills/mcp-builder/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "create-adr",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(creation)/create-adr/SKILL.md",
+      "findings": 1,
+      "riskScore": 25,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "skill-architect",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(creation)/skill-architect/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "playwright-skill",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(web-automation)/playwright-skill/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "docs-writer",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(development)/docs-writer/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "figma-implement-design",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(design)/figma-implement-design/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "security-ownership-map",
+      "path": "tech-leads-skills/packages/skills-catalog/skills/(security)/security-ownership-map/SKILL.md",
+      "findings": 1,
+      "riskScore": 25,
+      "categories": [
+        "ruby"
+      ],
+      "severities": [
+        "CRITICAL"
+      ]
+    },
+    {
+      "name": "google-workspace-cli",
+      "path": "hoodini-skills/skills/google-workspace-cli/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "command-injection"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-exfiltration-7",
+      "path": "skills/malicious-exfiltration-7/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-supply-chain-11",
+      "path": "skills/malicious-supply-chain-11/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-command-injection-14",
+      "path": "skills/malicious-command-injection-14/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-prompt-injection-6",
+      "path": "skills/malicious-prompt-injection-6/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-exfiltration-13",
+      "path": "skills/malicious-exfiltration-13/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-supply-chain-5",
+      "path": "skills/malicious-supply-chain-5/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-command-injection-2",
+      "path": "skills/malicious-command-injection-2/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-obfuscation-4",
+      "path": "skills/malicious-obfuscation-4/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-exfiltration-1",
+      "path": "skills/malicious-exfiltration-1/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-command-injection-8",
+      "path": "skills/malicious-command-injection-8/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-privilege-escalation-9",
+      "path": "skills/malicious-privilege-escalation-9/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-obfuscation-10",
+      "path": "skills/malicious-obfuscation-10/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-privilege-escalation-3",
+      "path": "skills/malicious-privilege-escalation-3/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-privilege-escalation-15",
+      "path": "skills/malicious-privilege-escalation-15/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    },
+    {
+      "name": "malicious-prompt-injection-12",
+      "path": "skills/malicious-prompt-injection-12/SKILL.md",
+      "findings": 1,
+      "riskScore": 10,
+      "categories": [
+        "model-specific"
+      ],
+      "severities": [
+        "HIGH"
+      ]
+    }
+  ]
+}
