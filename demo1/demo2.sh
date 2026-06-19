@@ -34,7 +34,7 @@ for dir in ~/.kiro/skills ~/.agents/skills ~/.config/opencode/skill; do
     if skillsguard "$dir" --json --min-severity HIGH --quiet 2>/dev/null; then
       echo -e "  ${GREEN}✅ SAFE${NC} — No HIGH/CRITICAL findings"
     else
-      echo -e "  ${RED}⚠️  FINDINGS${NC} — Review required"
+      echo -e "  ${RED}FINDINGS${NC} — Review required"
     fi
     echo ""
   fi
