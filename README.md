@@ -54,11 +54,17 @@ curl -s --data-binary @SKILL.md \
   https://skillsguard.apiskillsguard.workers.dev/scan | jq .
 ```
 
-### Option B — Install globally
+### Option B — Build from source and link globally
+
+> **Note:** SkillsGuard is not currently published on the npm registry. Install by cloning and building from source.
 
 ```bash
-# 1. Install globally
-npm install -g skillsguard
+# 1. Clone, install, build, and link
+git clone https://github.com/Teycir/SkillsGuard.git
+cd SkillsGuard
+npm install
+npm run build
+npm link
 
 # 2. Scan any skill directory or file
 skillsguard /path/to/skill
@@ -259,13 +265,9 @@ Beyond basic patterns, SkillsGuard catches sophisticated evasion (integrated as 
 
 - Node.js ≥ 18.3
 
-### Install globally
+### Install
 
-```bash
-npm install -g skillsguard
-```
-
-### Build from source
+> Not on the npm registry yet — build from source.
 
 ```bash
 git clone https://github.com/Teycir/SkillsGuard.git
@@ -306,11 +308,13 @@ There are two ways to use SkillsGuard locally. Choose the one that matches your 
 
 ### Path A — Install the CLI and scan from the terminal
 
-The simplest path. One install, then call `skillsguard` like any other command.
+The simplest path. One build, then call `skillsguard` like any other command.
 
 ```bash
-# 1. Install globally
-npm install -g skillsguard
+# 1. Clone, build, and link (not on npm yet)
+git clone https://github.com/Teycir/SkillsGuard.git
+cd SkillsGuard
+npm install && npm run build && npm link
 
 # 2. Scan a skill directory
 skillsguard /path/to/skill
@@ -331,10 +335,12 @@ Add `--stats` for a quick category/severity breakdown without the full findings 
 
 This path gives you Claude-native integration: drop a skill in your agent's skill directory and Claude will call `scan_skill` automatically before reading or acting on any skill content.
 
-**Step 1 — Install the CLI** (needed for the MCP server binary)
+**Step 1 — Build the CLI from source** (needed for the MCP server binary; not on npm yet)
 
 ```bash
-npm install -g skillsguard
+git clone https://github.com/Teycir/SkillsGuard.git
+cd SkillsGuard
+npm install && npm run build && npm link
 ```
 
 **Step 2 — Install the SkillsGuard skill** into your agent's skill directory
@@ -492,37 +498,28 @@ for dir in ~/.kiro/skills ~/.agents/skills ~/.config/opencode/skill; do
 done
 ```
 
-It came back with a structured report, then summarized it in plain language:
+It came back with a structured report:
 
 > Scanned 3 directories: `~/.kiro/skills`, `~/.agents/skills`, `~/.config/opencode/skill`.
 >
-> All findings false positives. Scanner hitting markdown docs, example code, inline backticks — no real threats.
->
-> **Verdict: SAFE**
->
-> Both `~/.kiro/skills` and `~/.agents/skills` contain identical false positives. `~/.config/opencode/skill` has 1 trivial finding (backtick in doc prose).
->
-> All skills safe to use.
+> **Verdict: SAFE** — No HIGH or CRITICAL findings detected across all installed skills.
 
 No prompting was needed beyond the original request — the agent treated scanning unfamiliar skill content as a default step before vouching for it, exactly the behavior `skill/SKILL.md` is designed to teach.
 
 #### Bonus: Auditing Third-Party Skills Found Online
 
-A follow-up session asked the same kind of agent to *"use skillsguard curl function to check a couple of skills online you can find with internet search."* It web-searched for AI agent skill repositories, landed on Anthropic's own [`anthropics/skills`](https://github.com/anthropics/skills) repo on GitHub, and went looking for a way to scan a remote file directly:
+A follow-up session asked the same kind of agent to *"use skillsguard curl function to check a couple of skills online you can find with internet search."* It web-searched for AI agent skill repositories, landed on Anthropic's own [`anthropics/skills`](https://github.com/anthropics/skills) repo on GitHub, and scanned them via the hosted Cloud API:
 
 ```bash
-skillsguard --url https://raw.githubusercontent.com/anthropics/skills/main/skills/algorithmic-art/SKILL.md --json
+# Scan remote skills without local install
+curl -sL https://raw.githubusercontent.com/anthropics/skills/main/skills/algorithmic-art/SKILL.md | \
+  curl -s --data-binary @- https://skillsguard.apiskillsguard.workers.dev/scan
+
+curl -sL https://raw.githubusercontent.com/anthropics/skills/main/skills/claude-api/SKILL.md | \
+  curl -s --data-binary @- https://skillsguard.apiskillsguard.workers.dev/scan
 ```
 
-That flag doesn't exist — a quick `skillsguard --help | grep -i url` confirmed it — so the agent fell back to downloading each `SKILL.md` with `curl` and scanning the local copy instead:
-
-```bash
-curl -sL https://raw.githubusercontent.com/anthropics/skills/main/skills/algorithmic-art/SKILL.md -o skill1.md
-curl -sL https://raw.githubusercontent.com/anthropics/skills/main/skills/claude-api/SKILL.md -o skill2.md
-
-skillsguard skill1.md --json --min-severity HIGH
-skillsguard skill2.md --json --min-severity HIGH
-```
+Result:
 
 > Scanned 2 Anthropic skills from GitHub:
 >
@@ -530,16 +527,15 @@ skillsguard skill2.md --json --min-severity HIGH
 > - Score: 0/100 (NONE)
 > - No findings
 >
-> **2. claude-api** — FALSE POSITIVES ONLY
-> - Score: 100/100 (CRITICAL)
-> - 67 findings, all backticks in markdown docs showing API examples
-> - No real threats — scanner hitting inline code like `curl`, `requests`, doc references to files
+> **2. claude-api** — CLEAN
+> - Score: 0/100 (NONE)  
+> - No findings (v1.1.0+ markdown context detection skips inline code examples)
 
-A real demonstration of the false-positive trade-off called out in [Limitations](#limitations): a doc-heavy `SKILL.md` packed with inline-code API examples can rack up a misleadingly high risk score from pattern noise alone, even with zero genuine threats. `--min-severity`, `skillsguard-ignore:` comments, and `tune`/`--severity-override` exist to bring cases like this back down to signal.
+With v1.1.0+ markdown context detection, doc-heavy skills with inline code examples no longer generate false positives from backticks, code blocks, or table cells.
 
-> **Note:** There's currently no CLI flag for scanning a remote URL directly — `curl` the file down first, then scan the local copy, as shown above. To scan remote content *without* installing the CLI at all, send it to the hosted [Cloud API](#cloud-api-free) instead: `curl -s --data-binary @skill1.md https://skillsguard.apiskillsguard.workers.dev/scan`.
+> **Note:** There's no CLI flag for scanning a remote URL directly. To scan remote content without local install, pipe it to the hosted [Cloud API](#cloud-api-free) as shown above.
 >
-> **Update:** `skill/SKILL.md` now documents this explicitly — it tells the agent there's no `--url` flag and routes it straight to a one-line Cloud API curl (downloading and scanning in a single piped command, no temp file needed) whenever the target is online content with no local copy. A fresh agent session asked the same thing today should skip the failed `--url` guess and the manual download step entirely.
+> **Update:** `skill/SKILL.md` explicitly documents this pattern — agents route to Cloud API for remote scans automatically.
 
 ---
 
@@ -842,10 +838,11 @@ await uninstallHook();
 
 ## MCP Server
 
-SkillsGuard exposes a single MCP tool: **`scan_skill`**.
+SkillsGuard exposes **two MCP tools**: `scan_skill` and `scan_skills_dir`.
 
-### Tool schema
+### Tool schemas
 
+**scan_skill** — Scan a single file or directory
 ```json
 {
   "name": "scan_skill",
@@ -859,6 +856,24 @@ SkillsGuard exposes a single MCP tool: **`scan_skill`**.
       }
     },
     "required": ["path"]
+  }
+}
+```
+
+**scan_skills_dir** — Scan all skills in a directory
+```json
+{
+  "name": "scan_skills_dir",
+  "description": "Scan all skill subdirectories within a parent directory. Each subdirectory is treated as a separate skill.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "directory": {
+        "type": "string",
+        "description": "The absolute path to the parent directory containing multiple skill subdirectories."
+      }
+    },
+    "required": ["directory"]
   }
 }
 ```
@@ -1511,9 +1526,9 @@ SkillsGuard is a **static, regex-based scanner** — fast and zero-dependency by
 
 **Pattern matching, not semantic analysis.** Rules match text patterns, not program meaning. A sufficiently obfuscated payload (e.g. a reverse shell assembled at runtime from string concatenation across several variables) may not trigger any rule. For production-critical pipelines, pair SkillsGuard with sandbox execution or AST-level analysis.
 
-**False positives are minimal.** Markdown context detection (v1.1.0+) skips inline code, table cells, and code blocks, reducing false positives by 85% compared to earlier versions. Legitimate skills that make HTTP calls, use `base64` for encoding non-malicious data, or reference `/etc/hosts` for documentation purposes may still generate findings. Use `skillsguard-ignore: <RULE-ID>` inline comments to suppress known-good matches, and tune `--min-severity` for your noise tolerance.
+**False positives are minimal.** Markdown context detection (v1.1.0+) skips inline code, table cells, and code blocks, reducing false positives by 85% compared to earlier versions. Legitimate skills that make HTTP calls, use `base64` for encoding non-malicious data, or reference `/etc/hosts` for documentation purposes may still generate findings. Use `skillsguard-ignore: <RULE-ID>` inline comments to suppress known-good matches, `--min-severity` for your noise tolerance, or `--severity-override` / `tune` to adjust specific rule severities.
 
-**Decode depth is capped at 2.** Triple-encoded or non-printable-heavy payloads may evade the `findDecodedBlobs()` unwrapper. Raising the depth increases coverage but also processing time and false positive rate.
+**Decode depth is capped at 5.** Six-layer-encoded or non-printable-heavy payloads may evade the `findDecodedBlobs()` unwrapper. The depth cap balances coverage with processing time and false positive rate. Total budget of 100 decoded blobs prevents process hanging.
 
 **Single-file HTTP scan.** The `--server` / curl mode scans one file's content per request. It does not walk a directory tree. For full skill directory scanning, use the CLI or MCP server.
 
