@@ -113,6 +113,7 @@ flowchart TD
 - [Threat Coverage](#threat-coverage)
 - [Quick Start](#quick-start)
 - [Local Workflow](#local-workflow)
+  - [Kiro CLI — Complete Example](#kiro-cli--complete-example)
 - [CLI Usage](#cli-usage)
 - [Git Diff Mode](#git-diff-mode)
 - [Configuration File](#configuration-file)
@@ -338,6 +339,96 @@ Scan ~/.agents/skills/some-new-skill for security issues
 ```
 
 Claude picks up the skill, calls `scan_skill`, and responds with a structured audit report. No manual command needed.
+
+---
+
+### Kiro CLI — Complete Example
+
+The exact commands used to wire SkillsGuard into kiro-cli.  
+Kiro keeps MCP servers under `~/Mcp/` and skills under `~/.kiro/skills/` — the install follows that convention so everything stays consistent with your other local MCPs.
+
+**Step 1 — Clone and build into your Mcp folder**
+
+```bash
+# Keep all local MCPs together, separate from your dev repos
+git clone https://github.com/Teycir/SkillsGuard.git ~/Mcp/skillsguard-mcp
+cd ~/Mcp/skillsguard-mcp
+
+# devDependencies contain the TypeScript compiler — must include them
+npm install --include=dev
+npm run build
+```
+
+**Step 2 — Install the skill**
+
+```bash
+mkdir -p ~/.kiro/skills/skillsguard
+cp ~/Mcp/skillsguard-mcp/skill/SKILL.md ~/.kiro/skills/skillsguard/SKILL.md
+```
+
+**Step 3 — Register the MCP server in kiro's config**
+
+Open `~/.kiro/settings/mcp.json` and add the `skillsguard` entry inside `mcpServers`:
+
+```json
+{
+  "mcpServers": {
+    "skillsguard": {
+      "command": "node",
+      "args": ["~/Mcp/skillsguard-mcp/dist/cli.js", "--mcp"]
+    }
+  }
+}
+```
+
+Or patch it from the shell without opening an editor:
+
+```bash
+node -e "
+const fs = require('fs');
+const p = process.env.HOME + '/.kiro/settings/mcp.json';
+const cfg = JSON.parse(fs.readFileSync(p, 'utf8'));
+cfg.mcpServers = cfg.mcpServers ?? {};
+cfg.mcpServers.skillsguard = {
+  command: 'node',
+  args: [process.env.HOME + '/Mcp/skillsguard-mcp/dist/cli.js', '--mcp']
+};
+fs.writeFileSync(p, JSON.stringify(cfg, null, 2));
+console.log('Done');
+"
+```
+
+**Step 4 — Verify the MCP handshake**
+
+```bash
+printf '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{}}}\n{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n' \
+  | node ~/Mcp/skillsguard-mcp/dist/cli.js --mcp 2>/dev/null \
+  | tail -1 | node -e "
+    const r = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+    r.result.tools.forEach(t => console.log('tool:', t.name));
+  "
+```
+
+Expected output:
+
+```
+tool: scan_skill
+tool: scan_skills_dir
+```
+
+**Step 5 — Restart kiro-cli**
+
+Restart the agent. Kiro will load `scan_skill` and `scan_skills_dir` as available MCP tools and pick up the SkillsGuard skill that teaches it when and how to call them. Then ask it to audit any skill:
+
+```
+Scan ~/.kiro/skills/some-new-skill for security issues
+```
+
+**To update in the future:**
+
+```bash
+cd ~/Mcp/skillsguard-mcp && git pull && npm install --include=dev && npm run build
+```
 
 ---
 
