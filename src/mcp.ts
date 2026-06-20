@@ -21,9 +21,6 @@ const DIR_SCAN_CONCURRENCY = 8;
 // Maximum bytes we will accept from a remote URL (512 KB).
 const MAX_REMOTE_BYTES = 512 * 1024;
 
-// Maximum redirects to follow when fetching a remote skill.
-const MAX_REMOTE_REDIRECTS = 5;
-
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -89,7 +86,7 @@ function isHttpUrl(s: string): boolean {
  *  - Content-Type must be text/* or application/octet-stream
  *  - Body truncated / rejected if > MAX_REMOTE_BYTES
  *  - Fetch itself is wrapped in the caller-supplied timeout
- *  - Maximum MAX_REMOTE_REDIRECTS redirects followed
+ *  - Redirects follow Node.js fetch defaults (up to 20 redirects)
  */
 async function fetchRemoteSkill(rawUrl: string, timeoutMs: number): Promise<string> {
   let url: URL;
@@ -228,6 +225,7 @@ async function scanSkillsDir(
   let flagged = 0;
   let clean = 0;
   let errors = 0;
+  let scannedCount = 0;
 
   for (let i = 0; i < skillPaths.length; i += DIR_SCAN_CONCURRENCY) {
     const batch = skillPaths.slice(i, i + DIR_SCAN_CONCURRENCY);
@@ -264,6 +262,7 @@ async function scanSkillsDir(
     );
 
     for (const r of batchResults) {
+      scannedCount++;
       if (r.error) errors++;
       else if (r.safe) clean++;
       else flagged++;
@@ -274,7 +273,7 @@ async function scanSkillsDir(
   }
 
   return {
-    scanned: skillPaths.length,
+    scanned: scannedCount,
     flagged,
     clean,
     errors,
