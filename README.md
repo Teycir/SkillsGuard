@@ -217,7 +217,7 @@ Zero runtime dependencies. Runs anywhere Node ≥ 18.3 is available.
 - **Multi-language support**: Expanded coverage for PowerShell (`.ps1`), Dockerfiles, and Ruby (`.rb`, Gemfiles)
 - **Decode-first preprocessing** — base64 / hex / URL decoding with recursive depth-2 unwrapping
 - **CLI** with human-readable colored output, JSON mode, and SARIF output formats
-- **Git Diff Mode**: Scan only modified or staged files using `--diff` and `--staged`
+- **Git Diff Mode**: Scan only changed files using `--diff` and `--staged`
 - **Configuration File Support**: Auto-loads `skillsguard.config.json` walking up to filesystem roots
 - **Risk Scoring**: Computes a single-number threat rating `0-100` to easily gate CI pipelines based on `--max-risk <n>`
 - **Pre-commit hook** — `skillsguard install-hook` blocks malicious commits at the source
@@ -1265,7 +1265,7 @@ Every file sent in this demo already lives in `testskills/` and is exercised by 
 
 ## Git Diff Mode
 
-To run faster scans on only the lines you've modified (ideal for local development and CI pre-merge checks), use Git Diff mode.
+To run faster scans on only the files that have changed (ideal for local development and CI pre-merge checks), use Git Diff mode.
 
 ```bash
 # Scan only staged files (index vs HEAD) — perfect for git hooks
