@@ -1323,7 +1323,7 @@ SkillsGuard computes a **Risk Score** from `0` to `100` for every scan, summariz
 
 ### Computation details
 - Severity weights: `CRITICAL` (25 pts), `HIGH` (10 pts), `MEDIUM` (3 pts), `LOW` (1 pt), `INFO` (0 pts).
-- To prevent a single flood of repetitive warnings from artificially skewing the score, each severity level bucket is capped at `4` matching findings.
+- To prevent a flood of repetitive warnings from artificially skewing the score, findings are scaled logarithmically per severity using `log2(count + 1)` — so 4 findings contribute ~2.3× the weight of 1 finding, and 20 findings contribute ~4.4× the weight.
 - Score ranges map to qualitative risk labels:
   - `0`: `NONE`
   - `1 - 10`: `LOW`
