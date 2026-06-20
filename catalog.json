@@ -1,0 +1,75 @@
+{
+  "name": "SkillsGuard",
+  "slug": "skillsguard",
+  "version": "1.1.1",
+  "category": "security",
+  "tags": [
+    "security",
+    "static-analysis",
+    "ai-agent",
+    "skill-scanner",
+    "prompt-injection",
+    "exfiltration",
+    "mcp",
+    "claude",
+    "agent-security"
+  ],
+  "shortDescription": "Static security scanner for AI agent skill packages",
+  "description": "SkillsGuard scans AI agent skills (SKILL.md + bundled scripts) for security threats: prompt injection, exfiltration, command injection, persistence, privilege escalation, obfuscation, supply-chain attacks, and model-specific jailbreaks. 100+ detection rules. Zero runtime dependencies.",
+  "author": "Teycir",
+  "license": "MIT",
+  "homepage": "https://github.com/Teycir/SkillsGuard",
+  "repository": "https://github.com/Teycir/SkillsGuard",
+  "documentation": "https://github.com/Teycir/SkillsGuard/blob/main/README.md",
+  "apiEndpoint": "https://skillsguard.apiskillsguard.workers.dev/scan",
+  "installation": {
+    "cli": "git clone https://github.com/Teycir/SkillsGuard.git && cd SkillsGuard && npm install && npm run build && npm link",
+    "api": "curl -s --data-binary @SKILL.md https://skillsguard.apiskillsguard.workers.dev/scan"
+  },
+  "usage": {
+    "cli": "skillsguard /path/to/skill",
+    "json": "skillsguard --json /path/to/skill",
+    "mcp": "Add to MCP config with command: node /path/to/SkillsGuard/dist/mcp.js"
+  },
+  "features": [
+    "100+ security detection rules",
+    "Zero runtime dependencies",
+    "CLI, API, and MCP integration",
+    "JSON/SARIF output for CI/CD",
+    "Diff mode for changed files only",
+    "Watch mode for live feedback",
+    "Baseline suppression for false positives"
+  ],
+  "detectionCategories": [
+    "prompt-injection",
+    "exfiltration",
+    "command-injection",
+    "persistence",
+    "privilege-escalation",
+    "obfuscation",
+    "supply-chain",
+    "model-jailbreaks"
+  ],
+  "supportedLanguages": [
+    "javascript",
+    "typescript",
+    "python",
+    "shell",
+    "powershell",
+    "ruby",
+    "dockerfile"
+  ],
+  "requirements": {
+    "node": ">=18.3.0"
+  },
+  "exitCodes": {
+    "0": "Clean (no threats)",
+    "1": "Threats detected",
+    "2": "Usage error"
+  },
+  "validation": {
+    "realWorldSkillsTested": 151,
+    "trueNegativeRate": 0.987,
+    "falsePositives": 0
+  }
+}

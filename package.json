@@ -2,13 +2,39 @@
   "name": "skillsguard",
   "version": "1.1.1",
   "description": "Static security scanner for AI agent Skills (SKILL.md + bundled scripts). Zero runtime dependencies.",
+  "keywords": [
+    "security",
+    "scanner",
+    "ai-agent",
+    "skill",
+    "SKILL.md",
+    "prompt-injection",
+    "static-analysis",
+    "mcp",
+    "claude",
+    "agent-security",
+    "skill-audit",
+    "ai-security",
+    "llm-security",
+    "codex",
+    "lazycodex"
+  ],
+  "homepage": "https://github.com/Teycir/SkillsGuard",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Teycir/SkillsGuard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Teycir/SkillsGuard/issues"
+  },
   "type": "module",
   "bin": {
     "skillsguard": "dist/cli.js"
   },
   "main": "dist/index.js",
   "files": [
-    "dist"
+    "dist",
+    "llm.txt"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
