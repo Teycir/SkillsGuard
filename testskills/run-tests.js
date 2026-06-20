@@ -2,6 +2,7 @@ import { execSync, spawn } from "node:child_process";
 
 const CASES = [
   { path: "testskills/safe-skill", expectedExitCode: 0 },
+  { path: "testskills/tweetclaw-source-skill", expectedExitCode: 0 },
   { path: "testskills/malicious-skill", expectedExitCode: 1 },
   { path: "testskills/scope-creep-skill", expectedExitCode: 1 },
   { path: "testskills/supply-chain-skill", expectedExitCode: 1 },
