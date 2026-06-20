@@ -83,7 +83,8 @@ Options:
   --diff-baseline     Only report NEW findings vs saved baseline
   --update-baseline   Merge new findings into existing baseline
   --watch             Re-scan target on file changes; print only deltas
-  --diff [<base>]     Scan only files changed vs <base> ref (default HEAD)
+  --diff [<base>]     Scan files changed vs <base> ref (default HEAD)
+                      Scans entire changed files, not line-by-line diffs
   --staged            With --diff: scan only staged files
   --server            Start local HTTP server to scan files via curl POST
   --port <number>     Port for HTTP server (default: 3000)

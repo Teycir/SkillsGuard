@@ -2,8 +2,11 @@
  * SkillsGuard — Git diff scanner
  *
  * Scans only files that are staged (--staged) or changed since a base ref
- * (e.g. "main", "HEAD~1"), so CI can report findings only on touched lines
+ * (e.g. "main", "HEAD~1"), so CI can report findings only on changed files
  * rather than the whole repo.
+ *
+ * Note: Each changed file is scanned in full; line-level filtering is not
+ * currently implemented.
  *
  * Usage (programmatic):
  *   const result = await scanGitDiff({ base: "main", staged: false });

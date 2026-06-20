@@ -632,7 +632,8 @@ Options:
                         "PATTERN"               bare regex, severity HIGH
                         "id:sev:cat:msg:PATTERN" fully specified rule
   --rules-only        Run ONLY the custom --rule patterns; skip built-ins
-  --diff [<base>]     Scan only files changed vs <base> ref (default HEAD).
+  --diff [<base>]     Scan files changed vs <base> ref (default HEAD).
+                      Scans entire changed files, not line-by-line diffs.
                       Use --diff --staged for pre-commit hooks (staged files only).
   --staged            With --diff: scan only staged files (index vs HEAD)
   --no-config         Skip auto-loading skillsguard.config.json
@@ -1265,7 +1266,7 @@ Every file sent in this demo already lives in `testskills/` and is exercised by 
 
 ## Git Diff Mode
 
-To run faster scans on only the files that have changed (ideal for local development and CI pre-merge checks), use Git Diff mode.
+To run faster scans on only the files that have changed (ideal for local development and CI pre-merge checks), use Git Diff mode. Each changed file is scanned in full.
 
 ```bash
 # Scan only staged files (index vs HEAD) — perfect for git hooks
