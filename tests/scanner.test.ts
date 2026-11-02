@@ -30,6 +30,8 @@ test("scan reports read errors for unreadable files", async () => {
     assert.ok(readErr);
     assert.strictEqual(readErr.severity, "HIGH");
     assert.match(readErr.message, /Failed to read file/);
+    assert.strictEqual(readErr.unanalyzed, true);
+    assert.strictEqual(result.riskScore.label, "HIGH");
   } finally {
     try {
       chmodSync(join(tmpDir, "unreadable.sh"), 0o644);

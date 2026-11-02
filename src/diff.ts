@@ -121,7 +121,7 @@ export async function scanGitDiff(opts: GitDiffOptions = {}): Promise<ScanResult
   for (const file of changedFiles) {
     try {
       const sub = await scan(file, opts);
-      allFindings.push(...sub.findings);
+      for (const f of sub.findings) allFindings.push(f);
       scannedCount += sub.filesScanned;
     } catch (err: unknown) {
       if (err instanceof Error && "code" in err && err.code === "ENOENT") {

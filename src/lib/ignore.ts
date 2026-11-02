@@ -44,42 +44,10 @@ export function isCommentLine(line: string): boolean {
   );
 }
 
-// ─── Placeholder / stopword detection ────────────────────────────────────────
-
-/**
- * Well-known placeholder/example strings from gitleaks, TruffleHog, and GitLab
- * secret-scanner allowlists.  If a matched line contains any of these as a
- * substring (case-insensitive), the match is almost certainly from docs,
- * test fixtures, or README examples rather than live malicious code.
- *
- * Criteria for inclusion:
- *   - Must be a word/phrase that virtually never appears in live attack code
- *   - Must have a clear, documented track record of causing FPs in SAST tools
- *   - Must not risk suppressing real findings (no generic words like "test")
- */
-const PLACEHOLDER_PATTERNS = [
-  /\bexample\b/i,
-  /\bplaceholder\b/i,
-  /\bdummy\b/i,
-  /\bfake\b/i,
-  /\bchangeme\b/i,
-  /\byour[_-]?(?:token|key|secret|password|api[_-]?key)\b/i,
-  /<(?:your[_-]?)?(?:token|key|secret|password|api[_-]?key)>/i,
-  /\bREPLACE(?:_WITH|_ME|_THIS)?\b/,
-  /xxxx+/i,
-  /0000+/,
-  /1234(?:56)?/,
-  /\bsample\b/i,
-];
-
-/**
- * Returns true if the line is almost certainly a documentation example or
- * placeholder, not live code.  Only used for rules where placeholders are a
- * dominant FP source (supply-chain, secret-harvesting, network).
- */
-export function isPlaceholderLine(line: string): boolean {
-  return PLACEHOLDER_PATTERNS.some((p) => p.test(line));
-}
+// ─── Placeholder detection ───────────────────────────────────────────────────
+// Lives in ./placeholder.ts. The old line-level check (skip the whole line when
+// a word such as "example" appeared anywhere on it) was removed on purpose: an
+// attacker can append that word to any payload.
 
 // ─── Test / fixture path detection ───────────────────────────────────────────
 
@@ -97,4 +65,32 @@ const TEST_PATH_RE =
 
 export function isTestFilePath(filePath: string): boolean {
   return TEST_PATH_RE.test(filePath);
+}
+
+/**
+ * Extensions of files that cannot execute on their own: documentation and
+ * plain data. Only these may have their severity lowered because of where
+ * they live.
+ */
+const NON_EXECUTABLE_EXTENSIONS = new Set<string>([
+  ".md", ".markdown", ".mdx", ".rst", ".txt",
+  ".json", ".yaml", ".yml", ".csv",
+]);
+
+/**
+ * Returns true when a finding in this file may be downgraded to INFO.
+ *
+ * A directory name never decides that code is harmless: a payload placed in
+ * examples/run.sh or tests/helper.py runs exactly like one anywhere else, and
+ * "put it under tests/" would otherwise be a one-step bypass (INFO, 0/100).
+ * So the downgrade needs both a test-like path AND a file that cannot execute
+ * by itself. Code files, extensionless scripts and unknown extensions keep
+ * their full severity.
+ */
+export function isDampenedPath(filePath: string): boolean {
+  if (!isTestFilePath(filePath)) return false;
+  const base = filePath.split(/[/\\]/).pop() ?? "";
+  const dot = base.lastIndexOf(".");
+  if (dot <= 0) return false; // no extension, or a dotfile: treat as code
+  return NON_EXECUTABLE_EXTENSIONS.has(base.slice(dot).toLowerCase());
 }

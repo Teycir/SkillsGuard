@@ -47,6 +47,13 @@ export interface Finding {
   evidence: string;
   pattern: string;
   decodedFrom?: string;
+  /**
+   * True when the finding records content the scanner could NOT review (file
+   * over the size limit, unreadable, bytecode too big to inspect). Absence of
+   * detections in such content means nothing, so these findings put a floor
+   * under the risk score instead of just adding to it (see computeRiskScore).
+   */
+  unanalyzed?: boolean;
 }
 
 /**
@@ -58,7 +65,9 @@ export interface Finding {
  *   contribution = log2(count + 1) * weight, where weight is
  *   CRITICAL → 25, HIGH → 10, MEDIUM → 3, LOW → 1, INFO → 0
  *
- * Final score = min(100, sum of all bucket contributions).
+ * Final score = min(100, sum of all bucket contributions), but never below the
+ * floor set by an `unanalyzed` finding: unreviewed content is scored at the
+ * midpoint of the label band matching that finding's severity.
  */
 export interface RiskScore {
   score: number;     // [0, 100]

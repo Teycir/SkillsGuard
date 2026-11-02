@@ -69,14 +69,14 @@ export const RUBY_RULES: readonly Rule[] = [
     id: "RB-008",
     category: "ruby",
     severity: "HIGH",
-    pattern: /^\s*source\s+['"]https?:\/\/(?!rubygems\.org)/im,
+    pattern: /^\s*source\s+['"]https?:\/\/(?!rubygems\.org(?:[:\/\s"']|$))/im,
     message: "Gemfile: non-rubygems.org source — potential supply chain risk",
   },
   {
     id: "RB-009",
     category: "ruby",
     severity: "HIGH",
-    pattern: /^\s*gem\s+['"][^'"]+['"],[^#\n]*git:\s*['"]https?:\/\/(?!github\.com|gitlab\.com)/im,
+    pattern: /^\s*gem\s+['"][^'"]+['"],[^#\n]*git:\s*['"]https?:\/\/(?!(?:github\.com|gitlab\.com)(?:[:\/\s"']|$))/im,
     message: "Gemfile: gem loaded from unrecognized git host",
   },
 

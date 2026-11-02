@@ -12,7 +12,8 @@
 
 import { watch as fsWatch } from "node:fs";
 import type { ScanOptions, Finding, Severity } from "./types.js";
-import { SEVERITY_RANK } from "./types.js";
+import { applyMinSeverity } from "./lib/severity-filter.js";
+import { isSilentPath } from "./lib/skipdirs.js";
 import { scan } from "./scanner.js";
 
 // ─── ANSI helpers (duplicated from report.ts to keep zero deps) ───────────────
@@ -61,7 +62,6 @@ export interface WatchOptions {
 export function startWatch(opts: WatchOptions): void {
   const { target, scanOptions, minSeverity, noColor, debounceMs = 300 } = opts;
   const use = noColor ? strip : (s: string) => s;
-  const minRank = SEVERITY_RANK[minSeverity];
 
   let prevFindings: Finding[] = [];
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -76,7 +76,7 @@ export function startWatch(opts: WatchOptions): void {
     scanning = true;
     try {
       const result = await scan(target, scanOptions);
-      const filtered = result.findings.filter((f) => SEVERITY_RANK[f.severity] >= minRank);
+      const filtered = applyMinSeverity(result.findings, minSeverity);
 
       const prevFP    = new Set(prevFindings.map(fp));
       const currFP    = new Set(filtered.map(fp));
@@ -120,8 +120,10 @@ export function startWatch(opts: WatchOptions): void {
   // Watch for changes
   fsWatch(target, { recursive: true }, (_event, filename) => {
     if (!filename) return;
-    // Ignore hidden dirs and build artifacts
-    if (/^\./.test(filename) || /node_modules|dist|build/.test(filename)) return;
+    // Ignore only what the scanner itself never reads (.git, .skillsguard).
+    // A change in dist/, build/, node_modules or a hidden directory can add
+    // code the scanner reports, so it must trigger a re-scan.
+    if (isSilentPath(filename)) return;
 
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => void runScan(), debounceMs);

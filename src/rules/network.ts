@@ -7,7 +7,9 @@ export const NETWORK_RULES: readonly Rule[] = [
     severity: "HIGH",
     // No longer requires --silent/-s: any curl/wget piping an untrusted URL to a shell/interpreter
     // is dangerous regardless of verbosity. Extended interpreter list: bash/sh/zsh/ksh/fish/python/ruby/perl/node.
-    pattern: /\b(curl|wget)\b[^#\n]*https?:\/\/(?!.*\.anthropic\.com|.*\.github\.com|.*\.githubusercontent\.com|.*\.npmjs\.com|.*\.pypi\.org)[^#\n]*\|\s*((ba)?sh|zsh|ksh|fish|python3?|ruby|perl|node)/i,
+    // The allowlist look-ahead only looks at hostname characters ([a-z0-9.-]) before the trusted
+    // suffix, so `evil.net?x=.github.com/` or `evil.net\.github.com/` cannot borrow the exemption.
+    pattern: /\b(curl|wget)\b[^#\n]*https?:\/\/(?![a-z0-9.-]*\.(?:anthropic\.com|github\.com|githubusercontent\.com|npmjs\.com|pypi\.org)(?:[:\/\s|"']|$))[^#\n]*\|\s*((ba)?sh|zsh|ksh|fish|python3?|ruby|perl|node)/i,
     message: "Network: fetching a script from an untrusted external host and piping to an interpreter",
     skipCommentLines: true,
     skipPlaceholderLines: true,

@@ -37,7 +37,7 @@ import { reportHuman, reportJson, reportStats, reportBaselineDiff } from "./repo
 import { reportSarif } from "./sarif.js";
 import { loadConfig } from "./config.js";
 import type { Severity, ScanResult, CustomRule } from "./types.js";
-import { SEVERITY_RANK } from "./types.js";
+import { applyMinSeverity } from "./lib/severity-filter.js";
 import { runMcpServer } from "./mcp.js";
 import { setupMcp } from "./setup.js";
 import { installHook, uninstallHook } from "./hook.js";
@@ -68,7 +68,8 @@ Options:
   --json              Emit JSON output
   --sarif             Emit SARIF 2.1.0 output (GitHub Code Scanning)
   --no-color          Disable ANSI color codes
-  --min-severity      Filter findings below this level (default: INFO)
+  --min-severity      Filter findings below this level (default: INFO);
+                      "not analyzed" findings are never filtered
                       Values: CRITICAL HIGH MEDIUM LOW INFO
   --exit-zero         Exit 0 even when findings exist
   --max-risk <n>      Exit 1 if risk score exceeds n [0-100]
@@ -671,8 +672,8 @@ async function main(): Promise<void> {
   }
 
   // ── Severity filter ────────────────────────────────────────────────────────
-  const minRank = SEVERITY_RANK[cfgMinSeverity];
-  const filteredFindings = result.findings.filter((f) => SEVERITY_RANK[f.severity] >= minRank);
+  // Unreviewed-content findings (SG-SKIP-001, ...) survive the threshold; see applyMinSeverity.
+  const filteredFindings = applyMinSeverity(result.findings, cfgMinSeverity);
   result = {
     ...result,
     findings: filteredFindings,

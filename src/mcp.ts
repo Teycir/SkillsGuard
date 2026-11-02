@@ -2,6 +2,7 @@ import { stdin, stdout } from "node:process";
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { scan, scanText, computeRiskScore } from "./scanner.js";
+import { applyMinSeverity } from "./lib/severity-filter.js";
 import { createRequire } from "node:module";
 import { isSafePath } from "./lib/path.js";
 
@@ -216,11 +217,6 @@ async function scanSkillsDir(
     ? [dirPath]
     : entries.filter((e) => e.isDirectory).map((e) => join(dirPath, e.name));
 
-  const SEVERITY_RANK: Record<string, number> = {
-    CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, INFO: 0,
-  };
-  const minRank = SEVERITY_RANK[minSeverity] ?? 0;
-
   const results: SkillSummary[] = [];
   let flagged = 0;
   let clean = 0;
@@ -235,9 +231,7 @@ async function scanSkillsDir(
         const skillName = skillPath === dirPath ? "." : skillPath.slice(dirPath.length + 1);
         try {
           const result = await withTimeout(scan(skillPath), timeoutPerSkillMs, skillPath);
-          const visibleFindings = result.findings.filter(
-            (f) => (SEVERITY_RANK[f.severity] ?? 0) >= minRank,
-          );
+          const visibleFindings = applyMinSeverity(result.findings, minSeverity);
           const safe = visibleFindings.length === 0;
           return {
             skill: skillName,
@@ -360,7 +354,9 @@ async function handleRequest(line: string): Promise<void> {
               min_severity: {
                 type: "string",
                 enum: ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"],
-                description: "Only include findings at or above this severity. Defaults to INFO.",
+                description:
+                  "Only include findings at or above this severity. Defaults to INFO. " +
+                  "Findings for content that could not be analyzed are always included, so a skill with unreviewed files is never reported safe.",
               },
               stop_on_first: {
                 type: "boolean",
