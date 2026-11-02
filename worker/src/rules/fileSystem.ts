@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/fileSystem.ts
+../../../src/rules/fileSystem.ts

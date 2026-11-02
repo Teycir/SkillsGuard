@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/privilegeEscalation.ts
+../../../src/rules/privilegeEscalation.ts

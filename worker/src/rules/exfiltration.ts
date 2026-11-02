@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/exfiltration.ts
+../../../src/rules/exfiltration.ts

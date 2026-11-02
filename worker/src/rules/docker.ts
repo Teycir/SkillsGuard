@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/docker.ts
+../../../src/rules/docker.ts

@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/supplyChain.ts
+../../../src/rules/supplyChain.ts

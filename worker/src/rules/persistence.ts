@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/persistence.ts
+../../../src/rules/persistence.ts

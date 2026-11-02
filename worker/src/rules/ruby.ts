@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/ruby.ts
+../../../src/rules/ruby.ts

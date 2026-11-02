@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/secretHarvesting.ts
+../../../src/rules/secretHarvesting.ts

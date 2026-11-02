@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/powershell.ts
+../../../src/rules/powershell.ts

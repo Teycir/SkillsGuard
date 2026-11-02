@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/scopeCreep.ts
+../../../src/rules/scopeCreep.ts

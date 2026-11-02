@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/network.ts
+../../../src/rules/network.ts

@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/modelSpecific.ts
+../../../src/rules/modelSpecific.ts

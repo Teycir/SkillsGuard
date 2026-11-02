@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/promptInjection.ts
+../../../src/rules/promptInjection.ts

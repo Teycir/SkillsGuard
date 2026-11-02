@@ -1,1 +1,1 @@
-/home/teycir/Repos/SkillsGuard/src/rules/obfuscation.ts
+../../../src/rules/obfuscation.ts
