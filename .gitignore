@@ -4,3 +4,38 @@ dist-test/
 *.log
 .skillsguard-cache.json
 .history
+# --- Private / local-only (never commit) ---
+
+# Maintainer deploy notes: Cloudflare account ID, dashboard link, deployment log
+
+DEPLOY.md
+
+
+
+# Wrangler / Cloudflare Workers: local dev state and secrets
+
+.wrangler/
+
+/.dev.vars
+
+/.dev.vars.*
+
+/worker/.dev.vars
+
+/worker/.dev.vars.*
+
+
+
+# Environment files (anchored so test fixtures under testskills/ stay trackable)
+
+/.env
+
+/.env.*
+
+/worker/.env
+
+/worker/.env.*
+
+!/.env.example
+
+!/worker/.env.example
